@@ -63,6 +63,25 @@ class JC_Log_Admin {
 	}
 
 	/**
+	 * Extrae el nombre base del log sin la fecha y el token aleatorio.
+	 *
+	 * @param string $file_name Nombre completo del archivo de log.
+	 * @return string Nombre base del log.
+	 */
+	private function extract_log_name( $file_name ) {
+		// Remover la extensión .log.
+		$base_name = str_replace( '.log', '', $file_name );
+
+		// Patrón para coincidir con {nombre_log}-{fecha}-{cadena_aleatoria}.
+		if ( preg_match( '/(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}$/', $base_name, $matches ) ) {
+			return $matches[1]; // Retorna la parte del nombre del log.
+		} else {
+			// Si el patrón no coincide, retornar el nombre original sin extensión.
+			return $base_name;
+		}
+	}
+
+	/**
 	 * Función para mostrar la página de logs.
 	 */
 	public function logs_page() {
@@ -105,9 +124,11 @@ class JC_Log_Admin {
 								),
 								admin_url( 'tools.php' )
 							);
+							// Extraer el nombre base del log.
+							$log_name = $this->extract_log_name( $file_name );
 							?>
 							<tr>
-								<td><a href="<?php echo esc_url( $view_url ); ?>"><?php echo esc_html( $file_name ); ?></a></td>
+								<td><a href="<?php echo esc_url( $view_url ); ?>"><?php echo esc_html( $log_name ); ?></a></td>
 								<td><?php echo esc_html( $creation_time ); ?></td>
 								<td><?php echo esc_html( $modification_time ); ?></td>
 								<td><?php echo esc_html( $file_size ); ?></td>

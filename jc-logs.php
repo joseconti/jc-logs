@@ -16,8 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'JC_LOGS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
 // Incluir las clases.
-require_once JC_LOGS_PLUGIN_DIR . 'includes/class-jc-log.php';
-require_once JC_LOGS_PLUGIN_DIR . 'includes/class-jc-log-admin.php';
+require_once JC_LOGS_PLUGIN_DIR . 'classes/class-jc-log.php';
+require_once JC_LOGS_PLUGIN_DIR . 'classes/class-jc-log-admin.php';
 
 // Inicializar el plugin.
 function jc_logs_init() {
