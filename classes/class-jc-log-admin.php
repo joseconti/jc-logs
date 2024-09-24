@@ -322,32 +322,33 @@ class JC_Log_Admin {
 	 * Render the settings page.
 	 */
 	/**
- * Render the settings page.
- */
-private function render_settings_page() {
-    // Get the log directory path and size.
-    $log_directory = $this->log_directory;
-    $directory_size = $this->get_directory_size( $log_directory );
+	 * Render the settings page.
+	 */
+	private function render_settings_page() {
+		// Get the log directory path and size.
+		$log_directory  = $this->log_directory;
+		$directory_size = $this->get_directory_size( $log_directory );
 
-    echo '<div class="wrap">';
-    echo '<h1>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h1>';
+		echo '<div class="wrap">';
+		echo '<h1>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h1>';
 
-    echo '<form method="post" action="options.php">';
-    // Output security fields for the registered setting "jc_logs_settings".
-    settings_fields( 'jc_logs_settings' );
-    // Output setting sections and their fields.
-    do_settings_sections( 'jc_logs_settings_page' );
-    // Output save settings button.
-    submit_button();
-    echo '</form>';
+		echo '<form method="post" action="options.php">';
+		// Output security fields for the registered setting "jc_logs_settings".
+		settings_fields( 'jc_logs_settings' );
+		// Output setting sections and their fields.
+		do_settings_sections( 'jc_logs_settings_page' );
 
-    // Display location and directory size.
-    echo '<h2>' . esc_html__( 'Location', 'jc-logs' ) . '</h2>';
-    echo '<p>' . esc_html__( 'Log files are stored in this directory:', 'jc-logs' ) . ' <code>' . esc_html( $log_directory ) . '</code></p>';
-    echo '<p>' . esc_html__( 'Directory size:', 'jc-logs' ) . ' ' . esc_html( size_format( $directory_size, 2 ) ) . '</p>';
+		// Display location and directory size.
+		echo '<h2>' . esc_html__( 'Location', 'jc-logs' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Log files are stored in this directory:', 'jc-logs' ) . ' <code>' . esc_html( $log_directory ) . '</code></p>';
+		echo '<p>' . esc_html__( 'Directory size:', 'jc-logs' ) . ' ' . esc_html( size_format( $directory_size, 2 ) ) . '</p>';
 
-    echo '</div>';
-}
+		// Output save settings button.
+		submit_button();
+		echo '</form>';
+
+		echo '</div>';
+	}
 
 	/**
 	 * Function to download a log file.
