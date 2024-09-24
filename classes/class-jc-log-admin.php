@@ -290,15 +290,15 @@ class JC_Log_Admin {
 		echo esc_html__( 'days', 'jc-logs' );
 		echo '</p>';
 
-		// Submit button
-		submit_button();
-
-		echo '</form>';
-
 		// Display location and directory size.
 		echo '<h2>' . esc_html__( 'Location', 'jc-logs' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Log files are stored in this directory:', 'jc-logs' ) . ' <code>' . esc_html( $log_directory ) . '</code></p>';
 		echo '<p>' . esc_html__( 'Directory size:', 'jc-logs' ) . ' ' . esc_html( size_format( $directory_size, 2 ) ) . '</p>';
+
+		// Submit button
+		submit_button();
+
+		echo '</form>';
 
 		echo '</div>';
 	}
