@@ -20,6 +20,19 @@ if ( ! class_exists( 'JC_Logs' ) ) {
 		private $security_token;
 
 		public function __construct() {
+			// Mueve la asignación de $security_token a un hook.
+			add_action( 'init', array( $this, 'initialize' ) );
+
+			// Hooks para el área de administración.
+			add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+			add_action( 'admin_post_jc_logs_download', array( $this, 'download_log_file' ) );
+			add_action( 'admin_post_jc_logs_delete', array( $this, 'delete_log_file' ) );
+		}
+
+		/**
+		 * Inicializa variables que dependen de WordPress.
+		 */
+		public function initialize() {
 			$upload_dir           = wp_upload_dir();
 			$this->log_directory  = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
 			$this->security_token = wp_hash( 'jc_logs_security' );
@@ -28,11 +41,6 @@ if ( ! class_exists( 'JC_Logs' ) ) {
 			if ( ! file_exists( $this->log_directory ) ) {
 				wp_mkdir_p( $this->log_directory );
 			}
-
-			// Hooks para el área de administración.
-			add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-			add_action( 'admin_post_jc_logs_download', array( $this, 'download_log_file' ) );
-			add_action( 'admin_post_jc_logs_delete', array( $this, 'delete_log_file' ) );
 		}
 
 		/**
@@ -193,6 +201,10 @@ if ( ! class_exists( 'JC_Logs' ) ) {
 		 * @param string $tipo        Tipo de log: Info, warning, error, critical.
 		 */
 		public function log( $nombre_log, $texto, $tipo = 'Info' ) {
+			// Verificar que el directorio y el token estén inicializados.
+			if ( empty( $this->log_directory ) || empty( $this->security_token ) ) {
+				$this->initialize();
+			}
 			$allowed_types = array( 'Info', 'warning', 'error', 'critical' );
 			if ( ! in_array( $tipo, $allowed_types, true ) ) {
 				$tipo = 'Info';
@@ -221,7 +233,10 @@ if ( ! class_exists( 'JC_Logs' ) ) {
 	}
 }
 
-// Instanciar la clase.
-if ( ! isset( $jc_logs ) ) {
-	$jc_logs = new JC_Logs();
+// Instanciar la clase después de que WordPress esté listo.
+function jc_logs_init() {
+	if ( ! isset( $GLOBALS['jc_logs'] ) ) {
+		$GLOBALS['jc_logs'] = new JC_Logs();
+	}
 }
+add_action( 'plugins_loaded', 'jc_logs_init' );
