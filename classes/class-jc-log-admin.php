@@ -91,6 +91,9 @@ class JC_Log_Admin {
 			return;
 		}
 
+		// Add the main title.
+		echo '<h1>' . esc_html__( 'JC Logs', 'jc-logs' ) . '</h1>';
+
 		// Determine the current tab.
 		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'explore';
 
@@ -330,7 +333,6 @@ class JC_Log_Admin {
 		$directory_size = $this->get_directory_size( $log_directory );
 
 		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h1>';
 
 		echo '<form method="post" action="options.php">';
 		// Output security fields for the registered setting "jc_logs_settings".
