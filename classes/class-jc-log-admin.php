@@ -90,81 +90,99 @@ class JC_Log_Admin {
 			return;
 		}
 
-		// Obtener lista de archivos de log.
-		$log_files = glob( $this->log_directory . '*.log' );
+		// Verificar si se ha seleccionado un archivo para ver.
+		if ( isset( $_GET['file'] ) ) {
+			// Mostrar el contenido del log seleccionado.
+			$file      = sanitize_file_name( wp_unslash( $_GET['file'] ) );
+			$file_path = $this->log_directory . $file;
 
-		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'Logs', 'jc-logs' ); ?></h1>
-			<table class="wp-list-table widefat fixed striped">
-				<thead>
-					<tr>
-						<th><?php esc_html_e( 'Nombre Log', 'jc-logs' ); ?></th>
-						<th><?php esc_html_e( 'Fecha Creación', 'jc-logs' ); ?></th>
-						<th><?php esc_html_e( 'Fecha Modificación', 'jc-logs' ); ?></th>
-						<th><?php esc_html_e( 'Tamaño Archivo', 'jc-logs' ); ?></th>
-						<th><?php esc_html_e( 'Acciones', 'jc-logs' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php if ( ! empty( $log_files ) ) : ?>
-						<?php foreach ( $log_files as $file ) : ?>
-							<?php
-							$file_name         = basename( $file );
-							$creation_time     = gmdate( 'Y-m-d H:i:s', filectime( $file ) );
-							$modification_time = gmdate( 'Y-m-d H:i:s', filemtime( $file ) );
-							$file_size         = size_format( filesize( $file ), 2 );
-							$download_url      = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_download&file=' . rawurlencode( $file_name ) ), 'jc_logs_download', 'jc_logs_nonce' );
-							$delete_url        = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_delete&file=' . rawurlencode( $file_name ) ), 'jc_logs_delete', 'jc_logs_nonce' );
-							$view_url          = add_query_arg(
-								array(
-									'page' => 'jc-logs',
-									'view' => 'log',
-									'file' => rawurlencode( $file_name ),
-								),
-								admin_url( 'tools.php' )
-							);
-							// Extraer el nombre base del log.
-							$log_name = $this->extract_log_name( $file_name );
-							?>
-							<tr>
-								<td><a href="<?php echo esc_url( $view_url ); ?>"><?php echo esc_html( $log_name ); ?></a></td>
-								<td><?php echo esc_html( $creation_time ); ?></td>
-								<td><?php echo esc_html( $modification_time ); ?></td>
-								<td><?php echo esc_html( $file_size ); ?></td>
-								<td>
-									<a class="button" href="<?php echo esc_url( $download_url ); ?>"><?php esc_html_e( 'Descargar', 'jc-logs' ); ?></a>
-									<a class="button delete-log" href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('<?php esc_attr_e( '¿Estás seguro de que deseas eliminar este archivo?', 'jc-logs' ); ?>');"><?php esc_html_e( 'Eliminar', 'jc-logs' ); ?></a>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					<?php else : ?>
-						<tr>
-							<td colspan="5"><?php esc_html_e( 'No hay logs disponibles.', 'jc-logs' ); ?></td>
-						</tr>
-					<?php endif; ?>
-				</tbody>
-			</table>
+			if ( file_exists( $file_path ) ) {
+				// URLs para acciones.
+				$download_url = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_download&file=' . rawurlencode( $file ) ), 'jc_logs_download', 'jc_logs_nonce' );
+				$delete_url   = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_delete&file=' . rawurlencode( $file ) ), 'jc_logs_delete', 'jc_logs_nonce' );
+				$back_url     = admin_url( 'tools.php?page=jc-logs' );
 
-			<?php
-			// Vista del contenido del log.
-			if ( isset( $_GET['view'] ) && 'log' === $_GET['view'] && isset( $_GET['file'] ) ) {
-				$file      = sanitize_file_name( wp_unslash( $_GET['file'] ) );
-				$file_path = $this->log_directory . $file;
+				// Título y botones.
+				echo '<div class="wrap">';
+				echo '<h1 style="display: flex; justify-content: space-between; align-items: center;">';
+				echo '<span>' . sprintf( esc_html__( 'Viendo el registro del archivo %s', 'jc-logs' ), esc_html( $file ) ) . '</span>';
+				echo '<span>';
+				echo '<a class="button" href="' . esc_url( $download_url ) . '">' . esc_html__( 'Descargar', 'jc-logs' ) . '</a> ';
+				echo '<a class="button" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( '¿Estás seguro de que deseas eliminar este archivo?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Eliminar', 'jc-logs' ) . '</a>';
+				echo '</span>';
+				echo '</h1>';
 
-				if ( file_exists( $file_path ) ) {
-					echo '<h2>' . esc_html( $file ) . '</h2>';
-					echo '<pre style="background-color: #fff; padding: 20px; border: 1px solid #ccc;">';
-					$content = file_get_contents( $file_path );
-					echo esc_html( $content );
-					echo '</pre>';
-				} else {
-					echo '<p>' . esc_html__( 'El archivo no existe.', 'jc-logs' ) . '</p>';
-				}
+				// Contenido del log.
+				echo '<pre style="background-color: #fff; padding: 20px; border: 1px solid #ccc; max-width: 100%; overflow: auto;">';
+				$content = file_get_contents( $file_path );
+				echo esc_html( $content );
+				echo '</pre>';
+
+				echo '</div>';
+			} else {
+				echo '<div class="wrap">';
+				echo '<h1>' . esc_html__( 'Error', 'jc-logs' ) . '</h1>';
+				echo '<p>' . esc_html__( 'El archivo no existe.', 'jc-logs' ) . '</p>';
+				echo '<a class="button" href="' . esc_url( admin_url( 'tools.php?page=jc-logs' ) ) . '">' . esc_html__( 'Volver a la lista', 'jc-logs' ) . '</a>';
+				echo '</div>';
 			}
-			?>
-		</div>
-		<?php
+		} else {
+			// Mostrar la lista de logs como antes.
+			$log_files = glob( $this->log_directory . '*.log' );
+
+			echo '<div class="wrap">';
+			echo '<h1>' . esc_html__( 'Logs', 'jc-logs' ) . '</h1>';
+			echo '<table class="wp-list-table widefat fixed striped">';
+			echo '<thead>';
+			echo '<tr>';
+			echo '<th>' . esc_html__( 'Nombre Log', 'jc-logs' ) . '</th>';
+			echo '<th>' . esc_html__( 'Fecha Creación', 'jc-logs' ) . '</th>';
+			echo '<th>' . esc_html__( 'Fecha Modificación', 'jc-logs' ) . '</th>';
+			echo '<th>' . esc_html__( 'Tamaño Archivo', 'jc-logs' ) . '</th>';
+			echo '<th>' . esc_html__( 'Acciones', 'jc-logs' ) . '</th>';
+			echo '</tr>';
+			echo '</thead>';
+			echo '<tbody>';
+
+			if ( ! empty( $log_files ) ) {
+				foreach ( $log_files as $file ) {
+					$file_name         = basename( $file );
+					$creation_time     = gmdate( 'Y-m-d H:i:s', filectime( $file ) );
+					$modification_time = gmdate( 'Y-m-d H:i:s', filemtime( $file ) );
+					$file_size         = size_format( filesize( $file ), 2 );
+					$download_url      = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_download&file=' . rawurlencode( $file_name ) ), 'jc_logs_download', 'jc_logs_nonce' );
+					$delete_url        = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_delete&file=' . rawurlencode( $file_name ) ), 'jc_logs_delete', 'jc_logs_nonce' );
+					$view_url          = add_query_arg(
+						array(
+							'page' => 'jc-logs',
+							'file' => rawurlencode( $file_name ),
+						),
+						admin_url( 'tools.php' )
+					);
+					// Extraer el nombre base del log.
+					$log_name = $this->extract_log_name( $file_name );
+
+					echo '<tr>';
+					echo '<td><a href="' . esc_url( $view_url ) . '">' . esc_html( $log_name ) . '</a></td>';
+					echo '<td>' . esc_html( $creation_time ) . '</td>';
+					echo '<td>' . esc_html( $modification_time ) . '</td>';
+					echo '<td>' . esc_html( $file_size ) . '</td>';
+					echo '<td>';
+					echo '<a class="button" href="' . esc_url( $download_url ) . '">' . esc_html__( 'Descargar', 'jc-logs' ) . '</a> ';
+					echo '<a class="button delete-log" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( '¿Estás seguro de que deseas eliminar este archivo?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Eliminar', 'jc-logs' ) . '</a>';
+					echo '</td>';
+					echo '</tr>';
+				}
+			} else {
+				echo '<tr>';
+				echo '<td colspan="5">' . esc_html__( 'No hay logs disponibles.', 'jc-logs' ) . '</td>';
+				echo '</tr>';
+			}
+
+			echo '</tbody>';
+			echo '</table>';
+			echo '</div>';
+		}
 	}
 
 	/**
