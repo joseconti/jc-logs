@@ -254,12 +254,45 @@ class JC_Log_Admin {
 		echo '<h1>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h1>';
 
 		echo '<form method="post" action="options.php">';
-		// Output security fields for the registered setting "jc_logs_settings".
 		settings_fields( 'jc_logs_settings' );
-		// Output setting sections and their fields.
 		do_settings_sections( 'jc_logs_settings_page' );
-		// Output save settings button.
+
+		// Enable Logging
+		echo '<h2>' . esc_html__( 'Logging', 'jc-logs' ) . '</h2>';
+		echo '<p>';
+		echo '<label>';
+		echo '<input type="checkbox" name="jc_logs_enable_logging" value="1" ' . checked( get_option( 'jc_logs_enable_logging' ), 1, false ) . ' />';
+		echo esc_html__( ' Enable logging', 'jc-logs' );
+		echo '</label>';
+		echo '</p>';
+
+		// Log Storage
+		echo '<h2>' . esc_html__( 'Log Storage', 'jc-logs' ) . '</h2>';
+		echo '<p>';
+		$storage_method = get_option( 'jc_logs_storage_method', 'file' );
+		echo '<label>';
+		echo '<input type="radio" name="jc_logs_storage_method" value="file" ' . checked( $storage_method, 'file', false ) . ' />';
+		echo esc_html__( ' File System (default)', 'jc-logs' );
+		echo '</label><br />';
+		echo '<label>';
+		echo '<input type="radio" name="jc_logs_storage_method" value="database" ' . checked( $storage_method, 'database', false ) . ' />';
+		echo esc_html__( ' Database (not recommended on production sites)', 'jc-logs' );
+		echo '</label>';
+		echo '</p>';
+		echo '<p><em>' . esc_html__( 'Please note that if this setting is changed, existing log entries will remain stored in their current location and will not be moved.', 'jc-logs' ) . '</em></p>';
+
+		// Retention Period
+		echo '<h2>' . esc_html__( 'Retention Period', 'jc-logs' ) . '</h2>';
+		$retention_days = get_option( 'jc_logs_retention_days', '30' );
+		echo '<p>';
+		echo esc_html__( 'Retention period: ', 'jc-logs' );
+		echo '<input type="number" name="jc_logs_retention_days" value="' . esc_attr( $retention_days ) . '" min="1" style="width: 80px;" /> ';
+		echo esc_html__( 'days', 'jc-logs' );
+		echo '</p>';
+
+		// Submit button
 		submit_button();
+
 		echo '</form>';
 
 		// Display location and directory size.
