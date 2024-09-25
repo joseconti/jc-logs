@@ -16,7 +16,7 @@ class JC_Log implements LoggerInterface {
 	private $security_token;
 	private $log_name = 'default'; // Nombre de log por defecto.
 
-	private function __construct() {
+	public function __construct() {
 		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
 	}
