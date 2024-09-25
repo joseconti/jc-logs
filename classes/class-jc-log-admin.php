@@ -19,7 +19,7 @@ class JC_Log_Admin {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_post_jc_logs_download', array( $this, 'download_log_file' ) );
 		add_action( 'admin_post_jc_logs_delete', array( $this, 'delete_log_file' ) );
-		add_action( 'admin_post_jc_logs_delete_database', array( $this, 'delete_log_database' ) ); // Nuevo hook para eliminar logs de la base de datos.
+		add_action( 'admin_post_jc_logs_delete_database', array( $this, 'delete_log_database' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 	}
 
