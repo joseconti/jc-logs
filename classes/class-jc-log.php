@@ -10,12 +10,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class JC_Log implements LoggerInterface {
 
-	private static $instance = null;
-
 	private $log_directory;
 	private $security_token;
 	private $log_name = 'default'; // Nombre de log por defecto.
 
+	/**
+	 * Constructor público para JC_Log.
+	 */
 	public function __construct() {
 		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
@@ -52,7 +53,7 @@ class JC_Log implements LoggerInterface {
 	 */
 	public function handle_shutdown() {
 		$error = error_get_last();
-		if ( $error && in_array( $error['type'], array( E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ) ) ) {
+		if ( $error && in_array( $error['type'], array( E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ), true ) ) {
 			// Asegurarse de que la clase esté inicializada.
 			if ( empty( $this->log_directory ) ) {
 				$this->initialize();
@@ -146,6 +147,8 @@ class JC_Log implements LoggerInterface {
 			// Verificar que el valor pueda ser convertido a string.
 			if ( ! is_array( $val ) && ( ! is_object( $val ) || method_exists( $val, '__toString' ) ) ) {
 				$replace[ '{' . $key . '}' ] = $val;
+			} else {
+				$replace[ '{' . $key . '}' ] = json_encode( $val );
 			}
 		}
 
