@@ -15,8 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Include necessary files.
 require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LoggerInterface.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LogLevel.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-jc-log.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-jc-log-admin.php';
+require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log.php';
+require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log-admin.php';
 
 // Initialize classes.
 JC_Logs\JC_Log::get_instance();

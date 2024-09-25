@@ -105,7 +105,7 @@ class JC_Log implements LoggerInterface {
 	 *
 	 * @param string $log_name The name of the log file.
 	 */
-	public function setLogName( $log_name ) {
+	public function set_log_name( $log_name ) {
 		$this->log_name = sanitize_file_name( $log_name );
 	}
 
@@ -119,7 +119,7 @@ class JC_Log implements LoggerInterface {
 	 */
 	public function logMessage( $log_name, $level, $message, array $context = array() ) {
 		// Set the log name.
-		$this->setLogName( $log_name );
+		$this->set_log_name( $log_name );
 
 		// Call the PSR-3 log method.
 		$this->log( $level, $message, $context );
