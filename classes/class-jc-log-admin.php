@@ -305,7 +305,7 @@ class JC_Log_Admin {
 	 * Render the content of a selected log file.
 	 */
 	private function render_log_content() {
-		$file      = sanitize_file_name( wp_unslash( $_GET['file'] ) );
+		$file      = isset( $_GET['file'] ) ? sanitize_file_name( wp_unslash( $_GET['file'] ) ) : '';
 		$file_path = $this->log_directory . $file;
 
 		if ( file_exists( $file_path ) ) {
