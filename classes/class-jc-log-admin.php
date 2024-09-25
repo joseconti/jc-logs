@@ -136,7 +136,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Render the list of logs.
+	 * Render the list of logs with pagination.
 	 */
 	private function render_log_list() {
 		// Obtener logs desde archivos.
@@ -198,6 +198,21 @@ class JC_Log_Admin {
 			}
 		);
 
+		// Configuración de Paginación
+		$per_page     = 20; // Número de logs por página
+		$current_page = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
+		$total_logs   = count( $all_logs );
+		$total_pages  = ceil( $total_logs / $per_page );
+
+		// Ajustar la página actual si está fuera de rango
+		if ( $current_page > $total_pages && $total_pages > 0 ) {
+			$current_page = $total_pages;
+		}
+
+		// Slicing de los logs para la página actual
+		$offset         = ( $current_page - 1 ) * $per_page;
+		$logs_paginated = array_slice( $all_logs, $offset, $per_page );
+
 		// Mostrar todos los logs en una tabla.
 		echo '<h2>' . esc_html__( 'Available Logs', 'jc-logs' ) . '</h2>';
 		echo '<table class="wp-list-table widefat fixed striped">';
@@ -213,8 +228,8 @@ class JC_Log_Admin {
 		echo '</thead>';
 		echo '<tbody>';
 
-		if ( ! empty( $all_logs ) ) {
-			foreach ( $all_logs as $log ) {
+		if ( ! empty( $logs_paginated ) ) {
+			foreach ( $logs_paginated as $log ) {
 				$log_name          = $log['log_name'];
 				$source            = $log['source'];
 				$creation_time     = $log['creation_time'];
@@ -226,9 +241,10 @@ class JC_Log_Admin {
 					$file_name    = $log['file_name'];
 					$view_url     = add_query_arg(
 						array(
-							'page' => 'jc-logs',
-							'tab'  => 'explore',
-							'file' => rawurlencode( $file_name ),
+							'page'  => 'jc-logs',
+							'tab'   => 'explore',
+							'file'  => rawurlencode( $file_name ),
+							'paged' => $current_page, // Mantener la página actual
 						),
 						admin_url( 'tools.php' )
 					);
@@ -248,6 +264,7 @@ class JC_Log_Admin {
 							'page'     => 'jc-logs',
 							'tab'      => 'explore',
 							'log_name' => urlencode( $log_name ),
+							'paged'    => $current_page, // Mantener la página actual
 						),
 						admin_url( 'tools.php' )
 					);
@@ -281,6 +298,24 @@ class JC_Log_Admin {
 
 		echo '</tbody>';
 		echo '</table>';
+
+		// Generar Enlaces de Paginación
+		if ( $total_pages > 1 ) {
+			$page_links = paginate_links(
+				array(
+					'base'      => add_query_arg( 'paged', '%#%' ),
+					'format'    => '',
+					'prev_text' => __( '&laquo; Previous', 'jc-logs' ),
+					'next_text' => __( 'Next &raquo;', 'jc-logs' ),
+					'total'     => $total_pages,
+					'current'   => max( 1, $current_page ),
+				)
+			);
+
+			if ( $page_links ) {
+				echo '<div class="tablenav"><div class="tablenav-pages">' . $page_links . '</div></div>';
+			}
+		}
 	}
 
 	/**
@@ -293,8 +328,8 @@ class JC_Log_Admin {
 		// Remove the .log extension.
 		$base_name = str_replace( '.log', '', $file_name );
 
-		// Pattern to match {log_name}-{date}.
-		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}$/', $base_name, $matches ) ) {
+		// Pattern to match {log_name}-{date} or {log_name}-{date}-{version}.
+		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}(?:-\d+)?$/', $base_name, $matches ) ) {
 			return $matches[1]; // Return the base log name.
 		} else {
 			return $base_name;
@@ -350,7 +385,7 @@ class JC_Log_Admin {
 			return;
 		}
 
-		// Retrieve log entries from the database.
+		// Obtener entradas de log de la base de datos.
 		$logs = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE log_name = %s ORDER BY timestamp DESC", $log_name ) );
 
 		if ( ! empty( $logs ) ) {
@@ -360,7 +395,7 @@ class JC_Log_Admin {
 			echo '<a class="button" href="' . esc_url( $back_url ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 			echo '</p>';
 
-			// Display the log entries in a table.
+			// Mostrar las entradas de log en una tabla.
 			echo '<table class="wp-list-table widefat fixed striped">';
 			echo '<thead>';
 			echo '<tr>';
