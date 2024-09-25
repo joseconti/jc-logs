@@ -10,7 +10,6 @@ class JC_Log_Admin {
 	private static $instance = null;
 
 	private $log_directory;
-	private $security_token;
 
 	private function __construct() {
 		// Initialize variables dependent on WordPress.
@@ -37,12 +36,11 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Initialize the logs directory and security token.
+	 * Initialize the logs directory.
 	 */
 	public function initialize() {
-		$upload_dir           = wp_upload_dir();
-		$this->log_directory  = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
-		$this->security_token = wp_hash( 'jc_logs_security' );
+		$upload_dir          = wp_upload_dir();
+		$this->log_directory = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
 
 		// Create the logs directory if it doesn't exist.
 		if ( ! file_exists( $this->log_directory ) ) {
@@ -51,35 +49,16 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Function to register the menu in the admin area.
+	 * Function to add the menu in the admin area.
 	 */
 	public function add_admin_menu() {
 		add_management_page(
-			__( 'Logs', 'jc-logs' ),
-			__( 'Logs', 'jc-logs' ),
+			__( 'JC Logs', 'jc-logs' ),
+			__( 'JC Logs', 'jc-logs' ),
 			'manage_options',
 			'jc-logs',
 			array( $this, 'logs_page' )
 		);
-	}
-
-	/**
-	 * Extracts the base log name without the date and random token.
-	 *
-	 * @param string $file_name Full name of the log file.
-	 * @return string Base log name.
-	 */
-	private function extract_log_name( $file_name ) {
-		// Remove the .log extension.
-		$base_name = str_replace( '.log', '', $file_name );
-
-		// Pattern to match {log_name}-{date}-{random_string}.
-		if ( preg_match( '/(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}$/', $base_name, $matches ) ) {
-			return $matches[1]; // Return the base log name.
-		} else {
-			// If the pattern doesn't match, return the original name without extension.
-			return $base_name;
-		}
 	}
 
 	/**
@@ -90,6 +69,9 @@ class JC_Log_Admin {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
+
+		// Start the wrap.
+		echo '<div class="wrap">';
 
 		// Add the main title.
 		echo '<h1>' . esc_html__( 'JC Logs', 'jc-logs' ) . '</h1>';
@@ -112,12 +94,15 @@ class JC_Log_Admin {
 				$this->render_explore_page();
 				break;
 		}
+
+		// Close the wrap.
+		echo '</div>';
 	}
 
 	/**
 	 * Render the tabs at the top of the page.
 	 *
-	 * @param string $current Current active tab.
+	 * @param string $current Active tab.
 	 */
 	private function render_tabs( $current = 'explore' ) {
 		$tabs = array(
@@ -133,15 +118,15 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Render the explore page, which lists logs or shows log content.
+	 * Render the explore page, which lists logs or displays the content of a log.
 	 */
 	private function render_explore_page() {
-		// Check if a log file is selected to view.
+		// Check if a log file was selected for viewing.
 		if ( isset( $_GET['file'] ) ) {
-			// Show the selected log content.
+			// Display the content of the selected log.
 			$this->render_log_content();
 		} else {
-			// Show the list of logs.
+			// Display the list of logs.
 			$this->render_log_list();
 		}
 	}
@@ -152,8 +137,7 @@ class JC_Log_Admin {
 	private function render_log_list() {
 		$log_files = glob( $this->log_directory . '*.log' );
 
-		echo '<div class="wrap">';
-		echo '<h1>' . esc_html__( 'Logs', 'jc-logs' ) . '</h1>';
+		echo '<h2>' . esc_html__( 'Available Logs', 'jc-logs' ) . '</h2>';
 		echo '<table class="wp-list-table widefat fixed striped">';
 		echo '<thead>';
 		echo '<tr>';
@@ -204,7 +188,24 @@ class JC_Log_Admin {
 
 		echo '</tbody>';
 		echo '</table>';
-		echo '</div>';
+	}
+
+	/**
+	 * Extract the base log name without the date and extension.
+	 *
+	 * @param string $file_name Full log file name.
+	 * @return string Base log name.
+	 */
+	private function extract_log_name( $file_name ) {
+		// Remove the .log extension.
+		$base_name = str_replace( '.log', '', $file_name );
+
+		// Pattern to match {log_name}-{date}-{random_string}.
+		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}$/', $base_name, $matches ) ) {
+			return $matches[1]; // Return the base log name.
+		} else {
+			return $base_name;
+		}
 	}
 
 	/**
@@ -221,28 +222,22 @@ class JC_Log_Admin {
 			$back_url     = admin_url( 'tools.php?page=jc-logs&tab=explore' );
 
 			// Title and buttons.
-			echo '<div class="wrap">';
-			echo '<h1 style="display: flex; justify-content: space-between; align-items: center;">';
-			echo '<span>' . sprintf( esc_html__( 'Viewing log file: %s', 'jc-logs' ), esc_html( $file ) ) . '</span>';
-			echo '<span>';
+			echo '<h2>' . sprintf( esc_html__( 'Viewing log file: %s', 'jc-logs' ), esc_html( $file ) ) . '</h2>';
+			echo '<p>';
 			echo '<a class="button" href="' . esc_url( $download_url ) . '">' . esc_html__( 'Download', 'jc-logs' ) . '</a> ';
-			echo '<a class="button" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this file?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Delete', 'jc-logs' ) . '</a>';
-			echo '</span>';
-			echo '</h1>';
+			echo '<a class="button" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this file?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Delete', 'jc-logs' ) . '</a> ';
+			echo '<a class="button" href="' . esc_url( $back_url ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
+			echo '</p>';
 
 			// Log content.
 			echo '<pre style="background-color: #fff; padding: 20px; border: 1px solid #ccc; max-width: 100%; overflow: auto;">';
 			$content = file_get_contents( $file_path );
 			echo esc_html( $content );
 			echo '</pre>';
-
-			echo '</div>';
 		} else {
-			echo '<div class="wrap">';
-			echo '<h1>' . esc_html__( 'Error', 'jc-logs' ) . '</h1>';
+			echo '<h2>' . esc_html__( 'Error', 'jc-logs' ) . '</h2>';
 			echo '<p>' . esc_html__( 'The file does not exist.', 'jc-logs' ) . '</p>';
 			echo '<a class="button" href="' . esc_url( admin_url( 'tools.php?page=jc-logs&tab=explore' ) ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
-			echo '</div>';
 		}
 	}
 
@@ -319,11 +314,6 @@ class JC_Log_Admin {
 		echo '</label>';
 	}
 
-
-
-	/**
-	 * Render the settings page.
-	 */
 	/**
 	 * Render the settings page.
 	 */
@@ -332,24 +322,21 @@ class JC_Log_Admin {
 		$log_directory  = $this->log_directory;
 		$directory_size = $this->get_directory_size( $log_directory );
 
-		echo '<div class="wrap">';
+		echo '<h2>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h2>';
 
 		echo '<form method="post" action="options.php">';
 		// Output security fields for the registered setting "jc_logs_settings".
 		settings_fields( 'jc_logs_settings' );
 		// Output setting sections and their fields.
 		do_settings_sections( 'jc_logs_settings_page' );
+		// Output save settings button.
+		submit_button();
+		echo '</form>';
 
 		// Display location and directory size.
 		echo '<h2>' . esc_html__( 'Location', 'jc-logs' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Log files are stored in this directory:', 'jc-logs' ) . ' <code>' . esc_html( $log_directory ) . '</code></p>';
 		echo '<p>' . esc_html__( 'Directory size:', 'jc-logs' ) . ' ' . esc_html( size_format( $directory_size, 2 ) ) . '</p>';
-
-		// Output save settings button.
-		submit_button();
-		echo '</form>';
-
-		echo '</div>';
 	}
 
 	/**
@@ -414,7 +401,9 @@ class JC_Log_Admin {
 	private function get_directory_size( $directory ) {
 		$size = 0;
 		foreach ( glob( $directory . '*', GLOB_NOSORT ) as $file ) {
-			$size += filesize( $file );
+			if ( is_file( $file ) ) {
+				$size += filesize( $file );
+			}
 		}
 		return $size;
 	}
