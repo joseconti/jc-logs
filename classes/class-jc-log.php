@@ -5,89 +5,60 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly.
+	exit; // Salir si se accede directamente.
 }
 
 class JC_Log implements LoggerInterface {
 
-	/**
-	 * The singleton instance of the class.
-	 *
-	 * @var JC_Log|null
-	 */
 	private static $instance = null;
 
-	/**
-	 * Directory where logs are stored.
-	 *
-	 * @var string
-	 */
 	private $log_directory;
-
-	/**
-	 * Security token for log operations.
-	 *
-	 * @var string
-	 */
 	private $security_token;
+	private $log_name = 'default'; // Nombre de log por defecto.
 
-	/**
-	 * Name of the log file.
-	 *
-	 * @var string
-	 */
-	private $log_name = 'default';
-
-	/**
-	 * Constructor.
-	 */
 	private function __construct() {
-		// Initialize variables dependent on WordPress.
+		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
 	}
 
 	/**
-	 * Get the singleton instance of the class.
-	 *
-	 * @return JC_Log The singleton instance of JC_Log.
-	 */
-	public static function get_instance() {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * Initialize the logs directory and security token.
+	 * Inicializar el directorio de logs y el token de seguridad.
 	 */
 	public function initialize() {
 		$upload_dir           = wp_upload_dir();
 		$this->log_directory  = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
 		$this->security_token = wp_hash( 'jc_logs_security' );
 
-		// Create the logs directory if it doesn't exist.
+		// Crear el directorio de logs si no existe.
 		if ( ! file_exists( $this->log_directory ) ) {
 			wp_mkdir_p( $this->log_directory );
 		}
 
-		// Register the shutdown function to capture fatal errors.
+		// Registrar la función de apagado para capturar errores fatales.
 		register_shutdown_function( array( $this, 'handle_shutdown' ) );
 	}
 
 	/**
-	 * Handle script shutdown and check for fatal errors.
+	 * Establecer el nombre del log.
+	 *
+	 * @param string $log_name El nombre del archivo de log.
+	 */
+	public function set_log_name( $log_name ) {
+		$this->log_name = sanitize_file_name( $log_name );
+	}
+
+	/**
+	 * Manejar el apagado del script y verificar si hay errores fatales.
 	 */
 	public function handle_shutdown() {
 		$error = error_get_last();
 		if ( $error && in_array( $error['type'], array( E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ) ) ) {
-			// Ensure the class is initialized.
+			// Asegurarse de que la clase esté inicializada.
 			if ( empty( $this->log_directory ) ) {
 				$this->initialize();
 			}
 
-			// Format the error message.
+			// Formatear el mensaje de error.
 			$message = sprintf(
 				'Fatal error: %s in %s on line %d',
 				$error['message'],
@@ -95,138 +66,63 @@ class JC_Log implements LoggerInterface {
 				$error['line']
 			);
 
-			// Log the error.
-			$this->logMessage( 'fatal-error', LogLevel::CRITICAL, $message );
+			// Establecer el nombre del log a 'fatal-error'.
+			$this->set_log_name( 'fatal-error' );
+
+			// Registrar el error.
+			$this->critical( $message );
 		}
 	}
 
-	/**
-	 * Set the log name.
-	 *
-	 * @param string $log_name The name of the log file.
-	 */
-	public function set_log_name( $log_name ) {
-		$this->log_name = sanitize_file_name( $log_name );
-	}
+	// Implementación de los métodos de PSR-3.
 
-	/**
-	 * Generic method to log a message with a specified log name.
-	 *
-	 * @param string $log_name The name of the log file.
-	 * @param string $level    The log level.
-	 * @param string $message  The log message.
-	 * @param array  $context  The log context.
-	 */
-	public function logMessage( $log_name, $level, $message, array $context = array() ) {
-		// Set the log name.
-		$this->set_log_name( $log_name );
-
-		// Call the PSR-3 log method.
-		$this->log( $level, $message, $context );
-	}
-
-	/**
-	 * Logs an emergency message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function emergency( $message, array $context = array() ) {
 		$this->log( LogLevel::EMERGENCY, $message, $context );
 	}
 
-	/**
-	 * Logs an alert message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function alert( $message, array $context = array() ) {
 		$this->log( LogLevel::ALERT, $message, $context );
 	}
 
-	/**
-	 * Logs a critical message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function critical( $message, array $context = array() ) {
 		$this->log( LogLevel::CRITICAL, $message, $context );
 	}
 
-	/**
-	 * Logs an error message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function error( $message, array $context = array() ) {
 		$this->log( LogLevel::ERROR, $message, $context );
 	}
 
-	/**
-	 * Logs a warning message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function warning( $message, array $context = array() ) {
 		$this->log( LogLevel::WARNING, $message, $context );
 	}
 
-	/**
-	 * Logs a notice message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function notice( $message, array $context = array() ) {
 		$this->log( LogLevel::NOTICE, $message, $context );
 	}
 
-	/**
-	 * Logs an info message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function info( $message, array $context = array() ) {
 		$this->log( LogLevel::INFO, $message, $context );
 	}
 
-	/**
-	 * Logs a debug message.
-	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function debug( $message, array $context = array() ) {
 		$this->log( LogLevel::DEBUG, $message, $context );
 	}
 
-	/**
-	 * Logs a message with a given level.
-	 *
-	 * @param string $level   The log level.
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
-	 */
 	public function log( $level, $message, array $context = array() ) {
-		// Verify that the directory is initialized.
+		// Verificar que el directorio esté inicializado.
 		if ( empty( $this->log_directory ) ) {
 			$this->initialize();
 		}
 
-		// Check if logging is enabled.
+		// Verificar si el logging está habilitado.
 		if ( ! get_option( 'jc_logs_enable_logging', 0 ) ) {
-			return; // Logging is disabled; exit the function.
+			return; // El logging está deshabilitado; salir de la función.
 		}
 
-		// Determine the storage method.
+		// Determinar el método de almacenamiento.
 		$storage_method = get_option( 'jc_logs_storage_method', 'file' );
 
-		// Interpolate context values into the message.
+		// Interpolar los valores de contexto en el mensaje.
 		$message = $this->interpolate( $message, $context );
 
 		if ( 'file' === $storage_method ) {
@@ -237,44 +133,46 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Interpolate context values into the message placeholders.
+	 * Interpolar los valores del contexto en los marcadores del mensaje.
 	 *
-	 * @param string $message The log message.
-	 * @param array  $context The log context.
+	 * @param string $message
+	 * @param array  $context
 	 * @return string
 	 */
 	private function interpolate( $message, array $context ) {
-		// Build a replacement array with braces around the context keys.
+		// Construir un array de reemplazo con llaves alrededor de los índices del contexto.
 		$replace = array();
 		foreach ( $context as $key => $val ) {
-			// Check that the value can be cast to string.
+			// Verificar que el valor pueda ser convertido a string.
 			if ( ! is_array( $val ) && ( ! is_object( $val ) || method_exists( $val, '__toString' ) ) ) {
 				$replace[ '{' . $key . '}' ] = $val;
 			}
 		}
 
-		// Interpolate replacement values into the message.
+		// Reemplazar los marcadores en el mensaje.
 		return strtr( $message, $replace );
 	}
 
 	/**
-	 * Write the log to a file.
+	 * Escribir el log en un archivo.
 	 *
-	 * @param string $level   The log level.
-	 * @param string $message The log message.
+	 * @param string $level   El nivel del log.
+	 * @param string $message El mensaje del log.
 	 */
 	private function write_log_to_file( $level, $message ) {
-		$date          = gmdate( 'Y-m-d' );
-		$log_name      = $this->log_name;
+		$date     = gmdate( 'Y-m-d' );
+		$log_name = $this->log_name;
+
+		// Generar una cadena aleatoria para mayor seguridad.
 		$random_string = substr( md5( uniqid( rand(), true ) ), 0, 10 );
 		$file_name     = "{$log_name}-{$date}-{$random_string}.log";
 		$file_path     = $this->log_directory . $file_name;
 
-		// Check file size limit (e.g., 1MB).
+		// Verificar el límite de tamaño del archivo (e.g., 1MB).
 		if ( file_exists( $file_path ) && filesize( $file_path ) > 1 * MB_IN_BYTES ) {
 			$version = 1;
 			do {
-				$file_name = "{$log_name}-{$date}-{$version}-{$random_string}.log";
+				$file_name = "{$log_name}-{$date}-{$random_string}-{$version}.log";
 				$file_path = $this->log_directory . $file_name;
 				++$version;
 			} while ( file_exists( $file_path ) && filesize( $file_path ) > 1 * MB_IN_BYTES );
@@ -286,14 +184,19 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Write the log to the database.
+	 * Escribir el log en la base de datos.
 	 *
-	 * @param string $level   The log level.
-	 * @param string $message The log message.
+	 * @param string $level   El nivel del log.
+	 * @param string $message El mensaje del log.
 	 */
 	private function write_log_to_database( $level, $message ) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'jc_logs';
+
+		// Asegurarse de que la tabla existe.
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) !== $table_name ) {
+			$this->create_logs_table();
+		}
 
 		$wpdb->insert(
 			$table_name,
@@ -313,72 +216,24 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Create the logs table in the database.
+	 * Crear la tabla de logs en la base de datos.
 	 */
-	public static function create_logs_table() {
+	public function create_logs_table() {
 		global $wpdb;
 		$table_name      = $wpdb->prefix . 'jc_logs';
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE $table_name (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            log_name varchar(255) NOT NULL,
             level varchar(20) NOT NULL,
             message text NOT NULL,
-            log_name varchar(255) NOT NULL,
             timestamp datetime NOT NULL,
-            PRIMARY KEY  (id)
+            PRIMARY KEY  (id),
+            KEY log_name (log_name)
         ) $charset_collate;";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 	}
-
-	/**
-	 * Activate the plugin.
-	 */
-	public static function activate() {
-		// Create the logs table.
-		self::create_logs_table();
-
-		// Schedule the daily cleanup if not already scheduled.
-		if ( ! wp_next_scheduled( 'jc_logs_daily_cleanup' ) ) {
-			wp_schedule_event( time(), 'daily', 'jc_logs_daily_cleanup' );
-		}
-	}
-
-	/**
-	 * Deactivate the plugin.
-	 */
-	public static function deactivate() {
-		// Clear the scheduled cleanup event.
-		wp_clear_scheduled_hook( 'jc_logs_daily_cleanup' );
-	}
-
-	/**
-	 * Delete old logs based on retention period.
-	 */
-	public function delete_old_logs() {
-		$retention_days = get_option( 'jc_logs_retention_days', '30' );
-		$cutoff_time    = strtotime( '-' . intval( $retention_days ) . ' days' );
-
-		$storage_method = get_option( 'jc_logs_storage_method', 'file' );
-
-		if ( 'file' === $storage_method ) {
-			// Delete old log files.
-			$log_files = glob( $this->log_directory . '*.log' );
-			foreach ( $log_files as $file ) {
-				if ( filemtime( $file ) < $cutoff_time ) {
-					unlink( $file );
-				}
-			}
-		} elseif ( 'database' === $storage_method ) {
-			// Delete old logs from the database.
-			global $wpdb;
-			$table_name = $wpdb->prefix . 'jc_logs';
-			$wpdb->query( $wpdb->prepare( "DELETE FROM $table_name WHERE timestamp < %s", date( 'Y-m-d H:i:s', $cutoff_time ) ) );
-		}
-	}
 }
-
-// Hook the delete_old_logs method to the scheduled event.
-add_action( 'jc_logs_daily_cleanup', array( JC_Log::get_instance(), 'delete_old_logs' ) );

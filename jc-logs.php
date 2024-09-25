@@ -19,7 +19,6 @@ require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log.php';
 require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log-admin.php';
 
 // Initialize classes.
-JC_Logs\JC_Log::get_instance();
 JC_Logs\JC_Log_Admin::get_instance();
 
 // Activation hook to create database table.
