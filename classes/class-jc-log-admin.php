@@ -138,6 +138,9 @@ class JC_Log_Admin {
 	/**
 	 * Renderizar la lista de logs con paginación.
 	 */
+	/**
+	 * Render the list of logs with pagination.
+	 */
 	private function render_log_list() {
 		// Obtener logs desde archivos.
 		$log_files = glob( $this->log_directory . '*.log' );
@@ -159,14 +162,22 @@ class JC_Log_Admin {
 				$file_size         = size_format( filesize( $file ), 2 );
 				$log_name          = $this->extract_log_name( $file_name );
 
-				$all_logs[] = array(
-					'source'            => 'file',
-					'log_name'          => $log_name,
-					'file_name'         => $file_name,
-					'creation_time'     => $creation_time,
-					'modification_time' => $modification_time,
-					'file_size'         => $file_size,
-				);
+				// Identificar si ya existe una entrada para este log_name y date
+				$key = "{$log_name}-{$date = substr( $file_name, 0, 10 )}";
+				if ( ! isset( $all_logs[ $key ] ) ) {
+					$all_logs[ $key ] = array(
+						'source'            => 'file',
+						'log_name'          => $log_name,
+						'file_names'        => array(),
+						'creation_time'     => $creation_time,
+						'modification_time' => $modification_time,
+						'file_size'         => 0,
+					);
+				}
+
+				$all_logs[ $key ]['file_names'][]      = $file_name;
+				$all_logs[ $key ]['file_size']        += filesize( $file );
+				$all_logs[ $key ]['modification_time'] = max( strtotime( $all_logs[ $key ]['modification_time'] ), filemtime( $file ) );
 			}
 		}
 
@@ -176,13 +187,12 @@ class JC_Log_Admin {
 				$log_name          = $log->log_name;
 				$creation_time     = $log->creation_time;
 				$modification_time = $log->modification_time;
-				// Dado que el tamaño del archivo no aplica, establecer en '-'.
-				$file_size = '-';
+				$file_size         = '-';
 
 				$all_logs[] = array(
 					'source'            => 'database',
 					'log_name'          => $log_name,
-					'file_name'         => '', // No aplica
+					'file_names'        => array(),
 					'creation_time'     => $creation_time,
 					'modification_time' => $modification_time,
 					'file_size'         => $file_size,
@@ -232,7 +242,8 @@ class JC_Log_Admin {
 				$actions           = '';
 
 				if ( 'file' === $source ) {
-					$file_name    = $log['file_name'];
+					// Mostrar solo el primer archivo en las acciones
+					$file_name    = $log['file_names'][0];
 					$view_url     = add_query_arg(
 						array(
 							'page' => 'jc-logs',
@@ -273,12 +284,19 @@ class JC_Log_Admin {
 				$creation_time_display     = ! empty( $creation_time ) ? esc_html( date_i18n( 'Y-m-d H:i:s', strtotime( $creation_time ) ) ) : '-';
 				$modification_time_display = ! empty( $modification_time ) ? esc_html( date_i18n( 'Y-m-d H:i:s', strtotime( $modification_time ) ) ) : '-';
 
+				// Formatear tamaño del archivo
+				if ( 'file' === $source ) {
+					$file_size_display = size_format( $file_size, 2 );
+				} else {
+					$file_size_display = esc_html( $file_size );
+				}
+
 				echo '<tr>';
 				echo '<td>' . $log_name_display . '</td>';
 				echo '<td>' . esc_html( ucfirst( $source ) ) . '</td>';
 				echo '<td>' . $creation_time_display . '</td>';
 				echo '<td>' . $modification_time_display . '</td>';
-				echo '<td>' . esc_html( $file_size ) . '</td>';
+				echo '<td>' . esc_html( $file_size_display ) . '</td>';
 				echo '<td>' . $actions . '</td>';
 				echo '</tr>';
 			}
@@ -310,6 +328,7 @@ class JC_Log_Admin {
 		}
 	}
 
+
 	/**
 	 * Extraer el nombre base del log sin la fecha y el sufijo aleatorio.
 	 *
@@ -321,7 +340,6 @@ class JC_Log_Admin {
 		$base_name = str_replace( '.log', '', $file_name );
 
 		// Patrón para coincidir con {log_name}-{date}-{random_string}
-		// Actualizado para 10 caracteres de cadena aleatoria
 		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}$/', $base_name, $matches ) ) {
 			return $matches[1]; // Retornar el nombre base del log.
 		} elseif ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}$/', $base_name, $matches ) ) {
@@ -332,6 +350,10 @@ class JC_Log_Admin {
 	}
 
 
+
+	/**
+	 * Renderizar el contenido de un archivo de log seleccionado.
+	 */
 	/**
 	 * Renderizar el contenido de un archivo de log seleccionado.
 	 */
@@ -364,6 +386,7 @@ class JC_Log_Admin {
 			echo '<a class="button" href="' . esc_url( admin_url( 'tools.php?page=jc-logs&tab=explore' ) ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 		}
 	}
+
 
 	/**
 	 * Renderizar el contenido de un log seleccionado desde la base de datos.
