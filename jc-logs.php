@@ -9,23 +9,18 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly.
+    exit; // Exit if accessed directly.
 }
 
-// Include necessary files.
+// Autoloading clases usando PSR-4 o incluye manualmente si no usas autoloader.
 require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LoggerInterface.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LogLevel.php';
 require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log.php';
 require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log-admin.php';
 
-// Initialize JC_Log
-JC_Logs\JC_Log::get_instance();
-
-// Initialize JC_Log_Admin
+// Inicializar la clase Admin.
 JC_Logs\JC_Log_Admin::get_instance();
 
-// Activation hook to create database table.
+// Activación y desactivación del plugin.
 register_activation_hook( __FILE__, array( 'JC_Logs\JC_Log', 'activate' ) );
-
-// Deactivation hook to clean up.
 register_deactivation_hook( __FILE__, array( 'JC_Logs\JC_Log', 'deactivate' ) );
