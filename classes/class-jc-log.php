@@ -10,16 +10,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class JC_Log implements LoggerInterface {
 
+	private static $instance = null;
 	private $log_directory;
 	private $security_token;
 	private $log_name = 'default'; // Nombre de log por defecto.
 
 	/**
-	 * Constructor público para JC_Log.
+	 * Constructor privado para implementar el Singleton.
 	 */
-	public function __construct() {
+	private function __construct() {
 		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
+	}
+
+	/**
+	 * Obtener la instancia única de la clase.
+	 *
+	 * @return JC_Log
+	 */
+	public static function get_instance() {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
 	}
 
 	/**
@@ -244,7 +258,7 @@ class JC_Log implements LoggerInterface {
 	 * Métodos de activación del plugin.
 	 */
 	public static function activate() {
-		$logger = new self();
+		$logger = self::get_instance();
 		$logger->initialize();
 		$logger->create_logs_table();
 	}
