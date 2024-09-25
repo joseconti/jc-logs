@@ -321,7 +321,8 @@ class JC_Log_Admin {
 		$base_name = str_replace( '.log', '', $file_name );
 
 		// Patrón para coincidir con {log_name}-{date}-{random_string}
-		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{6}$/', $base_name, $matches ) ) {
+		// Actualizado para 10 caracteres de cadena aleatoria
+		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}$/', $base_name, $matches ) ) {
 			return $matches[1]; // Retornar el nombre base del log.
 		} elseif ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}$/', $base_name, $matches ) ) {
 			return $matches[1]; // Retornar el nombre base del log sin sufijo aleatorio.
@@ -329,6 +330,7 @@ class JC_Log_Admin {
 			return $base_name;
 		}
 	}
+
 
 	/**
 	 * Renderizar el contenido de un archivo de log seleccionado.
