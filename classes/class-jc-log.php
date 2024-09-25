@@ -173,25 +173,45 @@ class JC_Log implements LoggerInterface {
 		$date     = gmdate( 'Y-m-d' );
 		$log_name = $this->log_name;
 
-		// Generate a random string for security.
-		$random_string = substr( md5( uniqid( rand(), true ) ), 0, 10 );
-		$file_name     = "{$log_name}-{$date}-{$random_string}.log";
-		$file_path     = $this->log_directory . $file_name;
+		// Patrón para buscar archivos existentes con el log_name y la fecha, ignorando la cadena aleatoria.
+		$pattern = "{$log_name}-{$date}-*.log";
+		$files   = glob( $this->log_directory . $pattern );
 
-		// Check file size limit (e.g., 1MB).
-		if ( file_exists( $file_path ) && filesize( $file_path ) > 1 * 1024 * 1024 ) { // 1 MB
-			$version = 1;
-			do {
-				$file_name = "{$log_name}-{$date}-{$random_string}-{$version}.log";
-				$file_path = $this->log_directory . $file_name;
-				++$version;
-			} while ( file_exists( $file_path ) && filesize( $file_path ) > 1 * 1024 * 1024 );
+		// Ordenar los archivos por fecha de modificación descendente para obtener el más reciente.
+		usort(
+			$files,
+			function ( $a, $b ) {
+				return filemtime( $b ) - filemtime( $a );
+			}
+		);
+
+		$file_path    = '';
+		$current_size = 0;
+		$max_size     = 1 * 1024 * 1024; // 1 MB
+
+		if ( ! empty( $files ) ) {
+			// Obtener el archivo más reciente.
+			$latest_file  = $files[0];
+			$current_size = filesize( $latest_file );
+
+			if ( $current_size < $max_size ) {
+				// Si el archivo no ha alcanzado el tamaño máximo, usarlo.
+				$file_path = $latest_file;
+			}
+		}
+
+		if ( empty( $file_path ) ) {
+			// Si no existe un archivo adecuado, crear uno nuevo con una cadena aleatoria.
+			$random_string = substr( md5( uniqid( rand(), true ) ), 0, 10 );
+			$file_name     = "{$log_name}-{$date}-{$random_string}.log";
+			$file_path     = $this->log_directory . $file_name;
 		}
 
 		$current_time = current_time( 'Y-m-d H:i:s' );
 		$log_entry    = "[{$current_time}] {$level}: {$message}" . PHP_EOL;
 		file_put_contents( $file_path, $log_entry, FILE_APPEND | LOCK_EX );
 	}
+
 
 	/**
 	 * Write the log to the database.
