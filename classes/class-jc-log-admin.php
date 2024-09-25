@@ -138,9 +138,6 @@ class JC_Log_Admin {
 	/**
 	 * Renderizar la lista de logs con paginación.
 	 */
-	/**
-	 * Render the list of logs with pagination.
-	 */
 	private function render_log_list() {
 		// Obtener logs desde archivos.
 		$log_files = glob( $this->log_directory . '*.log' );
@@ -159,11 +156,15 @@ class JC_Log_Admin {
 				$file_name         = basename( $file );
 				$creation_time     = gmdate( 'Y-m-d H:i:s', filectime( $file ) );
 				$modification_time = gmdate( 'Y-m-d H:i:s', filemtime( $file ) );
-				$file_size         = size_format( filesize( $file ), 2 );
+				$file_size         = filesize( $file );
 				$log_name          = $this->extract_log_name( $file_name );
 
+				// Extraer la fecha del nombre del archivo
+				// Suponiendo que el formato es {log_name}-YYYY-MM-DD-{random_string}.log
+				$date = substr( $file_name, strlen( $log_name ) + 1, 10 ); // Extrae YYYY-MM-DD
+
 				// Identificar si ya existe una entrada para este log_name y date
-				$key = "{$log_name}-{$date = substr( $file_name, 0, 10 )}";
+				$key = "{$log_name}-{$date}";
 				if ( ! isset( $all_logs[ $key ] ) ) {
 					$all_logs[ $key ] = array(
 						'source'            => 'file',
@@ -175,9 +176,12 @@ class JC_Log_Admin {
 					);
 				}
 
-				$all_logs[ $key ]['file_names'][]      = $file_name;
-				$all_logs[ $key ]['file_size']        += filesize( $file );
-				$all_logs[ $key ]['modification_time'] = max( strtotime( $all_logs[ $key ]['modification_time'] ), filemtime( $file ) );
+				$all_logs[ $key ]['file_names'][] = $file_name;
+				$all_logs[ $key ]['file_size']   += $file_size;
+				// Actualizar la fecha de modificación si el archivo actual es más reciente
+				if ( strtotime( $modification_time ) > strtotime( $all_logs[ $key ]['modification_time'] ) ) {
+					$all_logs[ $key ]['modification_time'] = $modification_time;
+				}
 			}
 		}
 
@@ -187,7 +191,8 @@ class JC_Log_Admin {
 				$log_name          = $log->log_name;
 				$creation_time     = $log->creation_time;
 				$modification_time = $log->modification_time;
-				$file_size         = '-';
+				// Dado que el tamaño del archivo no aplica, establecer en '-'.
+				$file_size = '-';
 
 				$all_logs[] = array(
 					'source'            => 'database',
@@ -199,6 +204,9 @@ class JC_Log_Admin {
 				);
 			}
 		}
+
+		// Convertir el array asociativo a un array indexado para usort
+		$all_logs = array_values( $all_logs );
 
 		// Ordenar los logs por fecha de modificación descendente
 		usort(
@@ -328,7 +336,6 @@ class JC_Log_Admin {
 		}
 	}
 
-
 	/**
 	 * Extraer el nombre base del log sin la fecha y el sufijo aleatorio.
 	 *
@@ -339,7 +346,7 @@ class JC_Log_Admin {
 		// Remover la extensión .log
 		$base_name = str_replace( '.log', '', $file_name );
 
-		// Patrón para coincidir con {log_name}-{date}-{random_string}
+		// Patrón para coincidir con {log_name}-YYYY-MM-DD-{random_string}
 		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}$/', $base_name, $matches ) ) {
 			return $matches[1]; // Retornar el nombre base del log.
 		} elseif ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}$/', $base_name, $matches ) ) {
@@ -349,11 +356,6 @@ class JC_Log_Admin {
 		}
 	}
 
-
-
-	/**
-	 * Renderizar el contenido de un archivo de log seleccionado.
-	 */
 	/**
 	 * Renderizar el contenido de un archivo de log seleccionado.
 	 */
@@ -386,7 +388,6 @@ class JC_Log_Admin {
 			echo '<a class="button" href="' . esc_url( admin_url( 'tools.php?page=jc-logs&tab=explore' ) ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 		}
 	}
-
 
 	/**
 	 * Renderizar el contenido de un log seleccionado desde la base de datos.
