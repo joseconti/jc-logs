@@ -10,16 +10,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class JC_Log implements LoggerInterface {
 
+	private static $instance = null;
 	private $log_directory;
 	private $security_token;
 	private $log_name = 'default'; // Nombre de log por defecto.
 
 	/**
-	 * Constructor público para JC_Log.
+	 * Constructor privado para implementar Singleton.
 	 */
-	public function __construct() {
+	private function __construct() {
 		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
+	}
+
+	/**
+	 * Obtener la instancia única de la clase.
+	 *
+	 * @return JC_Log La instancia única de JC_Log.
+	 */
+	public static function get_instance() {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
 	}
 
 	/**
@@ -171,14 +185,17 @@ class JC_Log implements LoggerInterface {
 		$file_name     = "{$log_name}-{$date}-{$random_string}.log";
 		$file_path     = $this->log_directory . $file_name;
 
+		// Definir el límite de tamaño del archivo (1MB).
+		$MB_IN_BYTES = 1048576; // 1 MB
+
 		// Verificar el límite de tamaño del archivo (e.g., 1MB).
-		if ( file_exists( $file_path ) && filesize( $file_path ) > 1 * MB_IN_BYTES ) {
+		if ( file_exists( $file_path ) && filesize( $file_path ) > $MB_IN_BYTES ) {
 			$version = 1;
 			do {
 				$file_name = "{$log_name}-{$date}-{$random_string}-{$version}.log";
 				$file_path = $this->log_directory . $file_name;
 				++$version;
-			} while ( file_exists( $file_path ) && filesize( $file_path ) > 1 * MB_IN_BYTES );
+			} while ( file_exists( $file_path ) && filesize( $file_path ) > $MB_IN_BYTES );
 		}
 
 		$current_time = current_time( 'Y-m-d H:i:s' );
@@ -197,7 +214,7 @@ class JC_Log implements LoggerInterface {
 		$table_name = $wpdb->prefix . 'jc_logs';
 
 		// Asegurarse de que la tabla existe.
-		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) !== $table_name ) {
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) !== $table_name ) {
 			$this->create_logs_table();
 		}
 
