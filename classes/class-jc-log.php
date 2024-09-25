@@ -5,7 +5,7 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Salir si se accede directamente.
+	exit; // Exit if accessed directly.
 }
 
 class JC_Log implements LoggerInterface {
@@ -13,18 +13,17 @@ class JC_Log implements LoggerInterface {
 	private static $instance = null;
 	private $log_directory;
 	private $security_token;
-	private $log_name = 'default'; // Nombre de log por defecto.
+	private $log_name = 'default'; // Default log name.
 
 	/**
-	 * Constructor privado para implementar el Singleton.
+	 * Private constructor to implement Singleton pattern.
 	 */
 	private function __construct() {
-		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
 	}
 
 	/**
-	 * Obtener la instancia única de la clase.
+	 * Get the singleton instance of the class.
 	 *
 	 * @return JC_Log
 	 */
@@ -37,43 +36,41 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Inicializar el directorio de logs y el token de seguridad.
+	 * Initialize the logs directory and security token.
 	 */
 	public function initialize() {
 		$upload_dir           = wp_upload_dir();
 		$this->log_directory  = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
 		$this->security_token = wp_hash( 'jc_logs_security' );
 
-		// Crear el directorio de logs si no existe.
+		// Create the logs directory if it doesn't exist.
 		if ( ! file_exists( $this->log_directory ) ) {
 			wp_mkdir_p( $this->log_directory );
 		}
 
-		// Registrar la función de apagado para capturar errores fatales.
+		// Register the shutdown function to capture fatal errors.
 		register_shutdown_function( array( $this, 'handle_shutdown' ) );
 	}
 
 	/**
-	 * Establecer el nombre del log.
+	 * Set the log name.
 	 *
-	 * @param string $log_name El nombre del archivo de log.
+	 * @param string $log_name The name of the log file.
 	 */
 	public function set_log_name( $log_name ) {
 		$this->log_name = sanitize_file_name( $log_name );
 	}
 
 	/**
-	 * Manejar el apagado del script y verificar si hay errores fatales.
+	 * Handle script shutdown and check for fatal errors.
 	 */
 	public function handle_shutdown() {
 		$error = error_get_last();
 		if ( $error && in_array( $error['type'], array( E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR ), true ) ) {
-			// Asegurarse de que la clase esté inicializada.
 			if ( empty( $this->log_directory ) ) {
 				$this->initialize();
 			}
 
-			// Formatear el mensaje de error.
 			$message = sprintf(
 				'Fatal error: %s in %s on line %d',
 				$error['message'],
@@ -81,15 +78,12 @@ class JC_Log implements LoggerInterface {
 				$error['line']
 			);
 
-			// Establecer el nombre del log a 'fatal-error'.
 			$this->set_log_name( 'fatal-error' );
-
-			// Registrar el error.
 			$this->critical( $message );
 		}
 	}
 
-	// Implementación de los métodos de PSR-3.
+	// Implementing PSR-3 methods.
 
 	public function emergency( $message, array $context = array() ) {
 		$this->log( LogLevel::EMERGENCY, $message, $context );
@@ -123,22 +117,24 @@ class JC_Log implements LoggerInterface {
 		$this->log( LogLevel::DEBUG, $message, $context );
 	}
 
+	/**
+	 * Logs with an arbitrary level.
+	 *
+	 * @param mixed  $level
+	 * @param string $message
+	 * @param array  $context
+	 */
 	public function log( $level, $message, array $context = array() ) {
-		// Verificar que el directorio esté inicializado.
 		if ( empty( $this->log_directory ) ) {
 			$this->initialize();
 		}
 
-		// Verificar si el logging está habilitado.
 		if ( ! get_option( 'jc_logs_enable_logging', 0 ) ) {
-			return; // El logging está deshabilitado; salir de la función.
+			return;
 		}
 
-		// Determinar el método de almacenamiento.
 		$storage_method = get_option( 'jc_logs_storage_method', 'file' );
-
-		// Interpolar los valores de contexto en el mensaje.
-		$message = $this->interpolate( $message, $context );
+		$message        = $this->interpolate( $message, $context );
 
 		if ( 'file' === $storage_method ) {
 			$this->write_log_to_file( $level, $message );
@@ -148,17 +144,15 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Interpolar los valores del contexto en los marcadores del mensaje.
+	 * Interpolates context values into the message placeholders.
 	 *
 	 * @param string $message
 	 * @param array  $context
 	 * @return string
 	 */
 	private function interpolate( $message, array $context ) {
-		// Construir un array de reemplazo con llaves alrededor de los índices del contexto.
 		$replace = array();
 		foreach ( $context as $key => $val ) {
-			// Verificar que el valor pueda ser convertido a string.
 			if ( ! is_array( $val ) && ( ! is_object( $val ) || method_exists( $val, '__toString' ) ) ) {
 				$replace[ '{' . $key . '}' ] = $val;
 			} else {
@@ -166,30 +160,29 @@ class JC_Log implements LoggerInterface {
 			}
 		}
 
-		// Reemplazar los marcadores en el mensaje.
 		return strtr( $message, $replace );
 	}
 
 	/**
-	 * Escribir el log en un archivo.
+	 * Write the log to a file.
 	 *
-	 * @param string $level   El nivel del log.
-	 * @param string $message El mensaje del log.
+	 * @param string $level
+	 * @param string $message
 	 */
 	private function write_log_to_file( $level, $message ) {
 		$date     = gmdate( 'Y-m-d' );
 		$log_name = $this->log_name;
 
-		// Generar el nombre del archivo sin cadena aleatoria.
-		$file_name = "{$log_name}-{$date}.log";
-		$file_path = $this->log_directory . $file_name;
+		// Generate a random string for security.
+		$random_string = substr( md5( uniqid( rand(), true ) ), 0, 10 );
+		$file_name     = "{$log_name}-{$date}-{$random_string}.log";
+		$file_path     = $this->log_directory . $file_name;
 
-		// Verificar el límite de tamaño del archivo (e.g., 1MB).
+		// Check file size limit (e.g., 1MB).
 		if ( file_exists( $file_path ) && filesize( $file_path ) > 1 * 1024 * 1024 ) { // 1 MB
-			// Añadir un sufijo de versión si el archivo excede el tamaño.
 			$version = 1;
 			do {
-				$file_name = "{$log_name}-{$date}-{$version}.log";
+				$file_name = "{$log_name}-{$date}-{$random_string}-{$version}.log";
 				$file_path = $this->log_directory . $file_name;
 				++$version;
 			} while ( file_exists( $file_path ) && filesize( $file_path ) > 1 * 1024 * 1024 );
@@ -201,16 +194,16 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Escribir el log en la base de datos.
+	 * Write the log to the database.
 	 *
-	 * @param string $level   El nivel del log.
-	 * @param string $message El mensaje del log.
+	 * @param string $level
+	 * @param string $message
 	 */
 	private function write_log_to_database( $level, $message ) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'jc_logs';
 
-		// Asegurarse de que la tabla existe.
+		// Ensure the table exists.
 		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) !== $table_name ) {
 			$this->create_logs_table();
 		}
@@ -218,9 +211,9 @@ class JC_Log implements LoggerInterface {
 		$wpdb->insert(
 			$table_name,
 			array(
+				'log_name'  => $this->log_name,
 				'level'     => $level,
 				'message'   => $message,
-				'log_name'  => $this->log_name,
 				'timestamp' => current_time( 'mysql' ),
 			),
 			array(
@@ -233,7 +226,7 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Crear la tabla de logs en la base de datos.
+	 * Create the logs table in the database.
 	 */
 	public function create_logs_table() {
 		global $wpdb;
@@ -255,21 +248,20 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Métodos de activación del plugin.
+	 * Activation hook to create the logs table.
 	 */
 	public static function activate() {
-		$logger = self::get_instance();
-		$logger->initialize();
-		$logger->create_logs_table();
+		$instance = self::get_instance();
+		$instance->initialize();
+		$instance->create_logs_table();
 	}
 
 	/**
-	 * Método de desactivación del plugin.
+	 * Deactivation hook to drop the logs table.
 	 */
 	public static function deactivate() {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'jc_logs';
-		$sql        = "DROP TABLE IF EXISTS {$table_name};";
-		$wpdb->query( $sql );
+		$wpdb->query( "DROP TABLE IF EXISTS {$table_name};" );
 	}
 }
