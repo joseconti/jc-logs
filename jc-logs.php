@@ -1,32 +1,29 @@
 <?php
-/*
-Plugin Name: JC Logs
-Description: Librería para generar y gestionar logs en WordPress.
-Version: 1.0.0
-Author: Tu Nombre
-Text Domain: jc-logs
-Domain Path: /languages
-*/
+/**
+ * Plugin Name: JC Logs
+ * Description: A plugin to handle custom logs in WordPress, implementing PSR-3.
+ * Version: 1.0.0
+ * Author: Your Name
+ * Text Domain: jc-logs
+ * Domain Path: /languages
+ */
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Salir si se accede directamente.
+	exit; // Exit if accessed directly.
 }
 
-// Definir una constante para la ruta del plugin.
-define( 'JC_LOGS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+// Include necessary files.
+require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LoggerInterface.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LogLevel.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-jc-log.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-jc-log-admin.php';
 
-// Incluir las clases.
-require_once JC_LOGS_PLUGIN_DIR . 'classes/class-jc-log.php';
-require_once JC_LOGS_PLUGIN_DIR . 'classes/class-jc-log-admin.php';
+// Initialize classes.
+JC_Logs\JC_Log::get_instance();
+JC_Logs\JC_Log_Admin::get_instance();
 
-// Inicializar el plugin.
-function jc_logs_init() {
-	// Inicializar el singleton del logger.
-	\JC_Logs\JC_Log::get_instance();
+// Activation hook to create database table.
+register_activation_hook( __FILE__, array( 'JC_Logs\JC_Log', 'activate' ) );
 
-	// Inicializar la administración solo en el área de administración.
-	if ( is_admin() ) {
-		\JC_Logs\JC_Log_Admin::get_instance();
-	}
-}
-add_action( 'plugins_loaded', 'jc_logs_init', 5 ); // Prioridad baja para cargar antes que otros plugins.
+// Deactivation hook to clean up.
+register_deactivation_hook( __FILE__, array( 'JC_Logs\JC_Log', 'deactivate' ) );
