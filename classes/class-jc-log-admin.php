@@ -145,7 +145,7 @@ class JC_Log_Admin {
 		// Get logs from database.
 		global $wpdb;
 		$table_name    = $wpdb->prefix . 'jc_logs';
-		$database_logs = $wpdb->get_results( "SELECT DISTINCT log_name FROM {$table_name}" );
+		$database_logs = $wpdb->get_results( "SELECT log_name, MIN(timestamp) as creation_time, MAX(timestamp) as modification_time FROM {$table_name} GROUP BY log_name" );
 
 		// Prepare an array to hold all logs.
 		$all_logs = array();
@@ -173,20 +173,32 @@ class JC_Log_Admin {
 		// Process database logs.
 		if ( ! empty( $database_logs ) ) {
 			foreach ( $database_logs as $log ) {
-				$log_name = $log->log_name;
+				$log_name          = $log->log_name;
+				$creation_time     = $log->creation_time;
+				$modification_time = $log->modification_time;
+				// Since file size doesn't apply, we can set to '-'.
+				$file_size = '-';
 
 				$all_logs[] = array(
 					'source'            => 'database',
 					'log_name'          => $log_name,
-					'file_name'         => '',
-					'creation_time'     => '', // Puedes obtener la fecha de creación si lo deseas.
-					'modification_time' => '', // Puedes obtener la fecha de modificación si lo deseas.
-					'file_size'         => '', // No aplica para base de datos.
+					'file_name'         => '', // Not applicable
+					'creation_time'     => $creation_time,
+					'modification_time' => $modification_time,
+					'file_size'         => $file_size,
 				);
 			}
 		}
 
-		// Mostrar todos los logs en una tabla.
+		// Sort the logs by modification time descending
+		usort(
+			$all_logs,
+			function ( $a, $b ) {
+				return strtotime( $b['modification_time'] ) - strtotime( $a['modification_time'] );
+			}
+		);
+
+		// Display all logs in a table.
 		echo '<h2>' . esc_html__( 'Available Logs', 'jc-logs' ) . '</h2>';
 		echo '<table class="wp-list-table widefat fixed striped">';
 		echo '<thead>';
@@ -226,6 +238,10 @@ class JC_Log_Admin {
 					$actions .= '<a class="button" href="' . esc_url( $view_url ) . '">' . esc_html__( 'View', 'jc-logs' ) . '</a> ';
 					$actions .= '<a class="button" href="' . esc_url( $download_url ) . '">' . esc_html__( 'Download', 'jc-logs' ) . '</a> ';
 					$actions .= '<a class="button delete-log" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this file?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Delete', 'jc-logs' ) . '</a>';
+
+					// Make log name clickable
+					$log_name_display = '<a href="' . esc_url( $view_url ) . '">' . esc_html( $log_name ) . '</a>';
+
 				} elseif ( 'database' === $source ) {
 					$view_url   = add_query_arg(
 						array(
@@ -239,13 +255,20 @@ class JC_Log_Admin {
 
 					$actions .= '<a class="button" href="' . esc_url( $view_url ) . '">' . esc_html__( 'View', 'jc-logs' ) . '</a> ';
 					$actions .= '<a class="button delete-log" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this log from the database?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Delete', 'jc-logs' ) . '</a>';
+
+					// Make log name clickable
+					$log_name_display = '<a href="' . esc_url( $view_url ) . '">' . esc_html( $log_name ) . '</a>';
 				}
 
+				// Format dates for display
+				$creation_time_display     = ! empty( $creation_time ) ? esc_html( date_i18n( 'Y-m-d H:i:s', strtotime( $creation_time ) ) ) : '-';
+				$modification_time_display = ! empty( $modification_time ) ? esc_html( date_i18n( 'Y-m-d H:i:s', strtotime( $modification_time ) ) ) : '-';
+
 				echo '<tr>';
-				echo '<td>' . esc_html( $log_name ) . '</td>';
+				echo '<td>' . $log_name_display . '</td>';
 				echo '<td>' . esc_html( ucfirst( $source ) ) . '</td>';
-				echo '<td>' . esc_html( $creation_time ) . '</td>';
-				echo '<td>' . esc_html( $modification_time ) . '</td>';
+				echo '<td>' . $creation_time_display . '</td>';
+				echo '<td>' . $modification_time_display . '</td>';
 				echo '<td>' . esc_html( $file_size ) . '</td>';
 				echo '<td>' . $actions . '</td>';
 				echo '</tr>';
