@@ -8,8 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 class JC_Log_Admin {
 
 	private static $instance = null;
-
 	private $log_directory;
+	private $logs_per_page = 20; // Número de logs por página.
 
 	private function __construct() {
 		// Initialize variables dependent on WordPress.
@@ -24,9 +24,9 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Get the singleton instance of the class.
+	 * Obtener la instancia única de la clase.
 	 *
-	 * @return JC_Log_Admin The singleton instance of JC_Log_Admin.
+	 * @return JC_Log_Admin La instancia única de JC_Log_Admin.
 	 */
 	public static function get_instance() {
 		if ( null === self::$instance ) {
@@ -37,20 +37,20 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Initialize the logs directory.
+	 * Inicializar el directorio de logs.
 	 */
 	public function initialize() {
 		$upload_dir          = wp_upload_dir();
 		$this->log_directory = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
 
-		// Create the logs directory if it doesn't exist.
+		// Crear el directorio de logs si no existe.
 		if ( ! file_exists( $this->log_directory ) ) {
 			wp_mkdir_p( $this->log_directory );
 		}
 	}
 
 	/**
-	 * Function to add the menu in the admin area.
+	 * Función para añadir el menú en el área de administración.
 	 */
 	public function add_admin_menu() {
 		add_management_page(
@@ -63,27 +63,27 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Function to display the logs page.
+	 * Función para mostrar la página de logs.
 	 */
 	public function logs_page() {
-		// Check capability.
+		// Verificar capacidades.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
-		// Start the wrap.
+		// Iniciar el contenedor.
 		echo '<div class="wrap">';
 
-		// Add the main title.
+		// Añadir el título principal.
 		echo '<h1>' . esc_html__( 'JC Logs', 'jc-logs' ) . '</h1>';
 
-		// Determine the current tab.
+		// Determinar la pestaña actual.
 		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'explore';
 
-		// Display the tabs.
+		// Mostrar las pestañas.
 		$this->render_tabs( $tab );
 
-		// Handle the content based on the active tab.
+		// Manejar el contenido basado en la pestaña activa.
 		switch ( $tab ) {
 			case 'explore':
 				$this->render_explore_page();
@@ -96,14 +96,14 @@ class JC_Log_Admin {
 				break;
 		}
 
-		// Close the wrap.
+		// Cerrar el contenedor.
 		echo '</div>';
 	}
 
 	/**
-	 * Render the tabs at the top of the page.
+	 * Renderizar las pestañas en la parte superior de la página.
 	 *
-	 * @param string $current Active tab.
+	 * @param string $current Pestaña activa.
 	 */
 	private function render_tabs( $current = 'explore' ) {
 		$tabs = array(
@@ -119,24 +119,24 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Render the explore page, which lists logs or displays the content of a log.
+	 * Renderizar la página de exploración, que lista los logs o muestra el contenido de un log.
 	 */
 	private function render_explore_page() {
-		// Check if a log file was selected for viewing.
+		// Verificar si se seleccionó un archivo de log para ver.
 		if ( isset( $_GET['file'] ) ) {
-			// Display the content of the selected log.
+			// Mostrar el contenido del archivo de log seleccionado.
 			$this->render_log_content();
 		} elseif ( isset( $_GET['log_name'] ) ) {
-			// Display the content of the selected log from the database.
+			// Mostrar el contenido del log seleccionado desde la base de datos.
 			$this->render_log_content_database();
 		} else {
-			// Display the list of logs.
+			// Mostrar la lista de logs con paginación.
 			$this->render_log_list();
 		}
 	}
 
 	/**
-	 * Render the list of logs with pagination.
+	 * Renderizar la lista de logs con paginación.
 	 */
 	private function render_log_list() {
 		// Obtener logs desde archivos.
@@ -198,20 +198,14 @@ class JC_Log_Admin {
 			}
 		);
 
-		// Configuración de Paginación
-		$per_page     = 20; // Número de logs por página
-		$current_page = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
+		// Implementar Paginación
+		$current_page = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
 		$total_logs   = count( $all_logs );
-		$total_pages  = ceil( $total_logs / $per_page );
+		$total_pages  = ceil( $total_logs / $this->logs_per_page );
 
-		// Ajustar la página actual si está fuera de rango
-		if ( $current_page > $total_pages && $total_pages > 0 ) {
-			$current_page = $total_pages;
-		}
-
-		// Slicing de los logs para la página actual
-		$offset         = ( $current_page - 1 ) * $per_page;
-		$logs_paginated = array_slice( $all_logs, $offset, $per_page );
+		// Obtener los logs para la página actual.
+		$offset       = ( $current_page - 1 ) * $this->logs_per_page;
+		$logs_to_show = array_slice( $all_logs, $offset, $this->logs_per_page );
 
 		// Mostrar todos los logs en una tabla.
 		echo '<h2>' . esc_html__( 'Available Logs', 'jc-logs' ) . '</h2>';
@@ -228,8 +222,8 @@ class JC_Log_Admin {
 		echo '</thead>';
 		echo '<tbody>';
 
-		if ( ! empty( $logs_paginated ) ) {
-			foreach ( $logs_paginated as $log ) {
+		if ( ! empty( $logs_to_show ) ) {
+			foreach ( $logs_to_show as $log ) {
 				$log_name          = $log['log_name'];
 				$source            = $log['source'];
 				$creation_time     = $log['creation_time'];
@@ -241,10 +235,9 @@ class JC_Log_Admin {
 					$file_name    = $log['file_name'];
 					$view_url     = add_query_arg(
 						array(
-							'page'  => 'jc-logs',
-							'tab'   => 'explore',
-							'file'  => rawurlencode( $file_name ),
-							'paged' => $current_page, // Mantener la página actual
+							'page' => 'jc-logs',
+							'tab'  => 'explore',
+							'file' => rawurlencode( $file_name ),
 						),
 						admin_url( 'tools.php' )
 					);
@@ -264,7 +257,6 @@ class JC_Log_Admin {
 							'page'     => 'jc-logs',
 							'tab'      => 'explore',
 							'log_name' => urlencode( $log_name ),
-							'paged'    => $current_page, // Mantener la página actual
 						),
 						admin_url( 'tools.php' )
 					);
@@ -299,57 +291,59 @@ class JC_Log_Admin {
 		echo '</tbody>';
 		echo '</table>';
 
-		// Generar Enlaces de Paginación
+		// Mostrar Paginación
 		if ( $total_pages > 1 ) {
-			$page_links = paginate_links(
+			echo '<div class="tablenav top">';
+			echo '<div class="tablenav-pages">';
+			echo paginate_links(
 				array(
 					'base'      => add_query_arg( 'paged', '%#%' ),
 					'format'    => '',
-					'prev_text' => __( '&laquo; Previous', 'jc-logs' ),
-					'next_text' => __( 'Next &raquo;', 'jc-logs' ),
+					'prev_text' => __( '&laquo;', 'jc-logs' ),
+					'next_text' => __( '&raquo;', 'jc-logs' ),
 					'total'     => $total_pages,
-					'current'   => max( 1, $current_page ),
+					'current'   => $current_page,
 				)
 			);
-
-			if ( $page_links ) {
-				echo '<div class="tablenav"><div class="tablenav-pages">' . $page_links . '</div></div>';
-			}
+			echo '</div>';
+			echo '</div>';
 		}
 	}
 
 	/**
-	 * Extract the base log name without the date and extension.
+	 * Extraer el nombre base del log sin la fecha y el sufijo aleatorio.
 	 *
-	 * @param string $file_name Full log file name.
-	 * @return string Base log name.
+	 * @param string $file_name Nombre completo del archivo de log.
+	 * @return string Nombre base del log.
 	 */
 	private function extract_log_name( $file_name ) {
-		// Remove the .log extension.
+		// Remover la extensión .log
 		$base_name = str_replace( '.log', '', $file_name );
 
-		// Pattern to match {log_name}-{date} or {log_name}-{date}-{version}.
-		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}(?:-\d+)?$/', $base_name, $matches ) ) {
-			return $matches[1]; // Return the base log name.
+		// Patrón para coincidir con {log_name}-{date}-{random_string}
+		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{6}$/', $base_name, $matches ) ) {
+			return $matches[1]; // Retornar el nombre base del log.
+		} elseif ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}$/', $base_name, $matches ) ) {
+			return $matches[1]; // Retornar el nombre base del log sin sufijo aleatorio.
 		} else {
 			return $base_name;
 		}
 	}
 
 	/**
-	 * Render the content of a selected log file.
+	 * Renderizar el contenido de un archivo de log seleccionado.
 	 */
 	private function render_log_content() {
 		$file      = isset( $_GET['file'] ) ? sanitize_file_name( wp_unslash( $_GET['file'] ) ) : '';
 		$file_path = $this->log_directory . $file;
 
 		if ( file_exists( $file_path ) ) {
-			// URLs for actions.
+			// URLs para acciones.
 			$download_url = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_download&file=' . rawurlencode( $file ) ), 'jc_logs_download', 'jc_logs_nonce' );
 			$delete_url   = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_delete&file=' . rawurlencode( $file ) ), 'jc_logs_delete', 'jc_logs_nonce' );
 			$back_url     = admin_url( 'tools.php?page=jc-logs&tab=explore' );
 
-			// Title and buttons.
+			// Título y botones.
 			echo '<h2>' . sprintf( esc_html__( 'Viewing log file: %s', 'jc-logs' ), esc_html( $file ) ) . '</h2>';
 			echo '<p>';
 			echo '<a class="button" href="' . esc_url( $download_url ) . '">' . esc_html__( 'Download', 'jc-logs' ) . '</a> ';
@@ -357,7 +351,7 @@ class JC_Log_Admin {
 			echo '<a class="button" href="' . esc_url( $back_url ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 			echo '</p>';
 
-			// Log content.
+			// Contenido del log.
 			echo '<pre style="background-color: #fff; padding: 20px; border: 1px solid #ccc; max-width: 100%; overflow: auto;">';
 			$content = file_get_contents( $file_path );
 			echo esc_html( $content );
@@ -370,7 +364,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Render the content of a selected log from the database.
+	 * Renderizar el contenido de un log seleccionado desde la base de datos.
 	 */
 	private function render_log_content_database() {
 		global $wpdb;
@@ -385,7 +379,7 @@ class JC_Log_Admin {
 			return;
 		}
 
-		// Obtener entradas de log de la base de datos.
+		// Recuperar entradas de log desde la base de datos.
 		$logs = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE log_name = %s ORDER BY timestamp DESC", $log_name ) );
 
 		if ( ! empty( $logs ) ) {
@@ -423,15 +417,15 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Register settings, sections, and fields for the settings page.
+	 * Registrar configuraciones, secciones y campos para la página de configuración.
 	 */
 	public function register_settings() {
-		// Register settings.
+		// Registrar configuraciones.
 		register_setting( 'jc_logs_settings', 'jc_logs_enable_logging' );
 		register_setting( 'jc_logs_settings', 'jc_logs_storage_method' );
 		register_setting( 'jc_logs_settings', 'jc_logs_retention_days' );
 
-		// Add settings section.
+		// Añadir sección de configuraciones.
 		add_settings_section(
 			'jc_logs_main_section',
 			__( 'Log Settings', 'jc-logs' ),
@@ -439,7 +433,7 @@ class JC_Log_Admin {
 			'jc_logs_settings_page'
 		);
 
-		// Add settings fields.
+		// Añadir campos de configuraciones.
 		add_settings_field(
 			'jc_logs_enable_logging',
 			__( 'Enable Logging', 'jc-logs' ),
@@ -496,35 +490,35 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Render the settings page.
+	 * Renderizar la página de configuraciones.
 	 */
 	private function render_settings_page() {
-		// Get the log directory path and size.
+		// Obtener la ruta del directorio de logs y el tamaño.
 		$log_directory  = $this->log_directory;
 		$directory_size = $this->get_directory_size( $log_directory );
 
 		echo '<h2>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h2>';
 
 		echo '<form method="post" action="options.php">';
-		// Output security fields for the registered setting "jc_logs_settings".
+		// Salida de campos de seguridad para la configuración registrada "jc_logs_settings".
 		settings_fields( 'jc_logs_settings' );
-		// Output setting sections and their fields.
+		// Salida de secciones de configuración y sus campos.
 		do_settings_sections( 'jc_logs_settings_page' );
-		// Output save settings button.
+		// Salida del botón de guardar configuraciones.
 		submit_button();
 		echo '</form>';
 
-		// Display location and directory size.
+		// Mostrar ubicación y tamaño del directorio.
 		echo '<h2>' . esc_html__( 'Location', 'jc-logs' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Log files are stored in this directory:', 'jc-logs' ) . ' <code>' . esc_html( $log_directory ) . '</code></p>';
 		echo '<p>' . esc_html__( 'Directory size:', 'jc-logs' ) . ' ' . esc_html( size_format( $directory_size, 2 ) ) . '</p>';
 	}
 
 	/**
-	 * Function to download a log file.
+	 * Función para descargar un archivo de log.
 	 */
 	public function download_log_file() {
-		// Verify nonce and capability.
+		// Verificar nonce y capacidades.
 		if ( ! isset( $_GET['jc_logs_nonce'] ) || ! wp_verify_nonce( $_GET['jc_logs_nonce'], 'jc_logs_download' ) || ! current_user_can( 'manage_options' ) ) {
 			wp_die( __( 'You do not have permission to perform this action.', 'jc-logs' ) );
 		}
@@ -551,10 +545,10 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Function to delete a log file.
+	 * Función para eliminar un archivo de log.
 	 */
 	public function delete_log_file() {
-		// Verify nonce and capability.
+		// Verificar nonce y capacidades.
 		if ( ! isset( $_GET['jc_logs_nonce'] ) || ! wp_verify_nonce( $_GET['jc_logs_nonce'], 'jc_logs_delete' ) || ! current_user_can( 'manage_options' ) ) {
 			wp_die( __( 'You do not have permission to perform this action.', 'jc-logs' ) );
 		}
@@ -574,10 +568,10 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Function to delete logs from the database.
+	 * Función para eliminar logs desde la base de datos.
 	 */
 	public function delete_log_database() {
-		// Verify nonce and capability.
+		// Verificar nonce y capacidades.
 		if ( ! isset( $_GET['jc_logs_nonce'] ) || ! wp_verify_nonce( $_GET['jc_logs_nonce'], 'jc_logs_delete_database' ) || ! current_user_can( 'manage_options' ) ) {
 			wp_die( __( 'You do not have permission to perform this action.', 'jc-logs' ) );
 		}
@@ -588,7 +582,7 @@ class JC_Log_Admin {
 			global $wpdb;
 			$table_name = $wpdb->prefix . 'jc_logs';
 
-			// Delete entries from database.
+			// Eliminar entradas de la base de datos.
 			$wpdb->delete( $table_name, array( 'log_name' => $log_name ), array( '%s' ) );
 
 			wp_redirect( admin_url( 'tools.php?page=jc-logs&tab=explore' ) );
@@ -597,10 +591,10 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Get the total size of a directory.
+	 * Obtener el tamaño total de un directorio.
 	 *
-	 * @param string $directory Directory path.
-	 * @return int Size in bytes.
+	 * @param string $directory Ruta del directorio.
+	 * @return int Tamaño en bytes.
 	 */
 	private function get_directory_size( $directory ) {
 		$size = 0;
