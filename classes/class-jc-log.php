@@ -10,30 +10,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class JC_Log implements LoggerInterface {
 
-	private static $instance = null;
 	private $log_directory;
 	private $security_token;
 	private $log_name = 'default'; // Nombre de log por defecto.
 
 	/**
-	 * Constructor privado para evitar múltiples instancias.
+	 * Constructor público para JC_Log.
 	 */
-	private function __construct() {
+	public function __construct() {
 		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
-	}
-
-	/**
-	 * Obtener la instancia única de la clase.
-	 *
-	 * @return JC_Log La instancia única de JC_Log.
-	 */
-	public static function get_instance() {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
 	}
 
 	/**
@@ -180,16 +166,16 @@ class JC_Log implements LoggerInterface {
 		$date     = gmdate( 'Y-m-d' );
 		$log_name = $this->log_name;
 
-		// Generar una cadena aleatoria para mayor seguridad.
-		$random_string = substr( md5( uniqid( rand(), true ) ), 0, 10 );
-		$file_name     = "{$log_name}-{$date}-{$random_string}.log";
-		$file_path     = $this->log_directory . $file_name;
+		// Generar el nombre del archivo sin cadena aleatoria.
+		$file_name = "{$log_name}-{$date}.log";
+		$file_path = $this->log_directory . $file_name;
 
 		// Verificar el límite de tamaño del archivo (e.g., 1MB).
 		if ( file_exists( $file_path ) && filesize( $file_path ) > 1 * 1024 * 1024 ) { // 1 MB
+			// Añadir un sufijo de versión si el archivo excede el tamaño.
 			$version = 1;
 			do {
-				$file_name = "{$log_name}-{$date}-{$random_string}-{$version}.log";
+				$file_name = "{$log_name}-{$date}-{$version}.log";
 				$file_path = $this->log_directory . $file_name;
 				++$version;
 			} while ( file_exists( $file_path ) && filesize( $file_path ) > 1 * 1024 * 1024 );
@@ -241,25 +227,26 @@ class JC_Log implements LoggerInterface {
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE $table_name (
-			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-			log_name varchar(255) NOT NULL,
-			level varchar(20) NOT NULL,
-			message text NOT NULL,
-			timestamp datetime NOT NULL,
-			PRIMARY KEY  (id),
-			KEY log_name (log_name)
-		) $charset_collate;";
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            log_name varchar(255) NOT NULL,
+            level varchar(20) NOT NULL,
+            message text NOT NULL,
+            timestamp datetime NOT NULL,
+            PRIMARY KEY  (id),
+            KEY log_name (log_name)
+        ) $charset_collate;";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 	}
 
 	/**
-	 * Método de activación del plugin.
+	 * Métodos de activación del plugin.
 	 */
 	public static function activate() {
-		$instance = self::get_instance();
-		$instance->create_logs_table();
+		$logger = new self();
+		$logger->initialize();
+		$logger->create_logs_table();
 	}
 
 	/**
