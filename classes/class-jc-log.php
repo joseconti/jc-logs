@@ -10,16 +10,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class JC_Log implements LoggerInterface {
 
+	private static $instance = null;
 	private $log_directory;
 	private $security_token;
 	private $log_name = 'default'; // Nombre de log por defecto.
 
 	/**
-	 * Constructor público para JC_Log.
+	 * Constructor privado para evitar múltiples instancias.
 	 */
-	public function __construct() {
+	private function __construct() {
 		// Inicializar variables dependientes de WordPress.
 		add_action( 'init', array( $this, 'initialize' ) );
+	}
+
+	/**
+	 * Obtener la instancia única de la clase.
+	 *
+	 * @return JC_Log La instancia única de JC_Log.
+	 */
+	public static function get_instance() {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
 	}
 
 	/**
@@ -227,16 +241,34 @@ class JC_Log implements LoggerInterface {
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE $table_name (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            log_name varchar(255) NOT NULL,
-            level varchar(20) NOT NULL,
-            message text NOT NULL,
-            timestamp datetime NOT NULL,
-            PRIMARY KEY  (id),
-            KEY log_name (log_name)
-        ) $charset_collate;";
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			log_name varchar(255) NOT NULL,
+			level varchar(20) NOT NULL,
+			message text NOT NULL,
+			timestamp datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY log_name (log_name)
+		) $charset_collate;";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
+	}
+
+	/**
+	 * Método de activación del plugin.
+	 */
+	public static function activate() {
+		$instance = self::get_instance();
+		$instance->create_logs_table();
+	}
+
+	/**
+	 * Método de desactivación del plugin.
+	 */
+	public static function deactivate() {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'jc_logs';
+		$sql        = "DROP TABLE IF EXISTS {$table_name};";
+		$wpdb->query( $sql );
 	}
 }

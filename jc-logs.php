@@ -18,7 +18,10 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LogLevel.php';
 require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log.php';
 require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log-admin.php';
 
-// Initialize classes.
+// Initialize JC_Log
+JC_Logs\JC_Log::get_instance();
+
+// Initialize JC_Log_Admin
 JC_Logs\JC_Log_Admin::get_instance();
 
 // Activation hook to create database table.
