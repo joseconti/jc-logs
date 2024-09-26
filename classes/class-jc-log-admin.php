@@ -506,7 +506,7 @@ class JC_Log_Admin {
 		$timestamp                 = trim( $timestamp, '[]' );
 
 		// Determinar el nivel de log.
-		$level = 'info'; // Nivel predeterminado
+		$level = 'info'; // Nivel predeterminado.
 		if ( stripos( $message, 'CRITICAL' ) !== false ) {
 			$level = 'critical';
 		} elseif ( stripos( $message, 'ERROR' ) !== false ) {
