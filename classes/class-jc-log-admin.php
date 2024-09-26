@@ -472,7 +472,6 @@ class JC_Log_Admin {
 			$back_url     = admin_url( 'tools.php?page=jc-logs&tab=explore' );
 
 			// Título y botones.
-			// translators: %s is the name of the log file being viewed.
 			echo '<h2>' . sprintf( esc_html__( 'Viewing log file: %s', 'jc-logs' ), esc_html( $file ) ) . '</h2>';
 			echo '<p>';
 			echo '<a class="button" href="' . esc_url( $download_url ) . '">' . esc_html__( 'Download', 'jc-logs' ) . '</a> ';
@@ -480,15 +479,68 @@ class JC_Log_Admin {
 			echo '<a class="button" href="' . esc_url( $back_url ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 			echo '</p>';
 
-			// Contenido del log.
-			echo '<pre style="background-color: #fff; padding: 20px; border: 1px solid #ccc; max-width: 100%; overflow: auto;">';
-			echo esc_html( $content ); // Escapar el contenido antes de imprimir.
-			echo '</pre>';
+			// Procesar y aplicar estilos al contenido del log.
+			echo '<div style="background-color: #fff; padding: 20px; border: 1px solid #ccc; max-width: 100%; overflow: auto;">';
+			$lines = explode( "\n", $content );
+			foreach ( $lines as $line ) {
+				if ( ! empty( trim( $line ) ) ) {
+					echo $this->style_log_line( $line ) . '<br>';
+				}
+			}
+			echo '</div>';
 		} else {
 			echo '<h2>' . esc_html__( 'Error', 'jc-logs' ) . '</h2>';
 			echo '<p>' . esc_html__( 'The file does not exist.', 'jc-logs' ) . '</p>';
 			echo '<a class="button" href="' . esc_url( admin_url( 'tools.php?page=jc-logs&tab=explore' ) ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 		}
+	}
+
+	private function style_log_line( $line ) {
+		// Separar la parte de la fecha del resto de la línea.
+		$parts = preg_split( '/\] /', $line, 2 );
+		if ( count( $parts ) < 2 ) {
+			return esc_html( $line );  // Devolver la línea sin cambios si el formato es incorrecto.
+		}
+
+		list($timestamp, $message) = $parts;
+		$timestamp                 = trim( $timestamp, '[]' );
+
+		// Determinar el nivel de log.
+		$level = 'info'; // Nivel predeterminado
+		if ( stripos( $message, 'CRITICAL' ) !== false ) {
+			$level = 'critical';
+		} elseif ( stripos( $message, 'ERROR' ) !== false ) {
+			$level = 'error';
+		} elseif ( stripos( $message, 'WARNING' ) !== false ) {
+			$level = 'warning';
+		} elseif ( stripos( $message, 'NOTICE' ) !== false ) {
+			$level = 'notice';
+		} elseif ( stripos( $message, 'INFO' ) !== false ) {
+			$level = 'info';
+		}
+
+		// Obtener el color basado en el nivel de log.
+		$color = $this->get_log_color( $level );
+
+		// Retornar la línea con el estilo correspondiente.
+		return sprintf(
+			'<div style="border: 1px solid %1$s; padding: 5px; margin-bottom: 4px;"><span style="color: %1$s; font-weight: bold;">[%2$s]</span> %3$s</div>',
+			esc_attr( $color ),
+			esc_html( $level ),
+			esc_html( $message )
+		);
+	}
+
+	private function get_log_color( $level ) {
+		$colors = array(
+			'critical' => '#ff0000', // Rojo
+			'error'    => '#ff4500', // Rojo Anaranjado
+			'warning'  => '#ff8c00', // Naranja Oscuro
+			'notice'   => '#00ced1', // Turquesa Oscuro
+			'info'     => '#4682b4',  // Azul Acero
+		);
+
+		return isset( $colors[ $level ] ) ? $colors[ $level ] : '#000000'; // Por defecto, negro si no coincide
 	}
 
 	/**
