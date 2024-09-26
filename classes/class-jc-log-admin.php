@@ -73,7 +73,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Inicializar el directorio de logs y la tabla de la base de datos.
+	 * Inicializar el directorio de logs.
 	 */
 	public function initialize() {
 		global $wpdb;
@@ -87,11 +87,23 @@ class JC_Log_Admin {
 			wp_mkdir_p( $this->log_directory );
 		}
 
+		// Inicializar WP_Filesystem.
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+
+		WP_Filesystem();
+		global $wp_filesystem;
+
 		// Crear el archivo .htaccess para proteger el directorio de logs.
-		$htaccess_file = $this->log_directory . '.htaccess';
-		if ( ! file_exists( $htaccess_file ) ) {
+		$htaccess_file = trailingslashit( $this->log_directory ) . '.htaccess';
+		if ( ! $wp_filesystem->exists( $htaccess_file ) ) {
 			$htaccess_content = "Deny from all\n";
-			file_put_contents( $htaccess_file, $htaccess_content );
+			$result           = $wp_filesystem->put_contents( $htaccess_file, $htaccess_content, FS_CHMOD_FILE );
+
+			if ( false === $result ) {
+				wp_die( esc_html__( 'Unable to create the .htaccess file for log protection.', 'jc-logs' ) );
+			}
 		}
 	}
 
