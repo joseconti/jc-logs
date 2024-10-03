@@ -214,33 +214,18 @@ class JC_Log implements LoggerInterface {
 		}
 
 		$storage_method = get_option( 'jc_logs_storage_method', 'file' );
-		$message        = $this->interpolate( $message, $context );
+
+		// Codificar el contexto completo como JSON.
+		$context_json = wp_json_encode( $context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+
+		// Concatenar el contexto JSON al mensaje.
+		$message .= ' ' . $context_json;
 
 		if ( 'file' === $storage_method ) {
 			$this->write_log_to_file( $level, $message );
 		} elseif ( 'database' === $storage_method ) {
 			$this->write_log_to_database( $level, $message );
 		}
-	}
-
-	/**
-	 * Interpolates context values into the message placeholders.
-	 *
-	 * @param string $message The log message with placeholders.
-	 * @param array  $context An array of placeholder replacements.
-	 * @return string The message with placeholders replaced by context values.
-	 */
-	private function interpolate( $message, array $context ) {
-		$replace = array();
-		foreach ( $context as $key => $val ) {
-			if ( ! is_array( $val ) && ( ! is_object( $val ) || method_exists( $val, '__toString' ) ) ) {
-				$replace[ '{' . $key . '}' ] = $val;
-			} else {
-				$replace[ '{' . $key . '}' ] = wp_json_encode( $val );
-			}
-		}
-
-		return strtr( $message, $replace );
 	}
 
 	/**
