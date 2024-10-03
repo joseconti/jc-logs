@@ -214,7 +214,7 @@ class JC_Log_Admin {
 		$database_logs = wp_cache_get( $cache_key, 'jc_logs' );
 
 		if ( false === $database_logs ) {
-			$database_logs = $wpdb->get_results( "SELECT log_name, MIN(timestamp) AS creation_time, MAX(timestamp) AS modification_time FROM {$this->table_name} GROUP BY log_name" );
+			$database_logs = $wpdb->get_results( 'SELECT log_name, MIN(timestamp) AS creation_time, MAX(timestamp) AS modification_time FROM {$this->table_name} GROUP BY log_name' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
 			// Almacenar en caché durante 5 minutos.
 			wp_cache_set( $cache_key, $database_logs, 'jc_logs', 300 );
@@ -513,7 +513,7 @@ class JC_Log_Admin {
 
 		if ( false === $logs ) {
 			// Recuperar entradas de log desde la base de datos usando consultas preparadas.
-			$logs = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE log_name = %s ORDER BY timestamp DESC", $log_name ) );
+			$logs = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $wpdb->prefix . 'jc_logs WHERE log_name = %s ORDER BY timestamp DESC', $log_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
 			// Almacenar en caché durante 5 minutos.
 			wp_cache_set( $cache_key, $logs, 'jc_logs', 300 );
@@ -756,7 +756,7 @@ class JC_Log_Admin {
 			$table_name = $this->table_name;
 
 			// Eliminar entradas de la base de datos.
-			$deleted = $wpdb->delete( $table_name, array( 'log_name' => $log_name ), array( '%s' ) );
+			$deleted = $wpdb->delete( $table_name, array( 'log_name' => $log_name ), array( '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
 			if ( false !== $deleted ) {
 				// Borrar la caché correspondiente.

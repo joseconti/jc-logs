@@ -6,6 +6,8 @@
  * Author: Your Name
  * Text Domain: jc-logs
  * Domain Path: /languages
+ *
+ * @package JC_Logs
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,8 +20,8 @@ add_action( 'plugins_loaded', 'initialize_jc_logs', 1 );
  */
 function initialize_jc_logs() {
 
-	require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LoggerInterface.php';
-	require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/LogLevel.php';
+	require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/logger-interface.php';
+	require_once plugin_dir_path( __FILE__ ) . 'includes/Psr/Log/class-loglevel.php';
 	require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log.php';
 	require_once plugin_dir_path( __FILE__ ) . 'classes/class-jc-log-admin.php';
 
