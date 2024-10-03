@@ -214,8 +214,10 @@ class JC_Log_Admin {
 		$database_logs = wp_cache_get( $cache_key, 'jc_logs' );
 
 		if ( false === $database_logs ) {
-			$database_logs = $wpdb->get_results( 'SELECT log_name, MIN(timestamp) AS creation_time, MAX(timestamp) AS modification_time FROM {$this->table_name} GROUP BY log_name' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-
+			$query         = $wpdb->prepare(
+				'SELECT log_name, MIN(timestamp) AS creation_time, MAX(timestamp) AS modification_time FROM {$this->table_name} GROUP BY log_name'
+			); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnnecessaryPrepare
+			$database_logs = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
 			// Almacenar en caché durante 5 minutos.
 			wp_cache_set( $cache_key, $database_logs, 'jc_logs', 300 );
 		}
