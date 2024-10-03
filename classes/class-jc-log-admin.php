@@ -727,16 +727,11 @@ class JC_Log_Admin {
 
 			if ( file_exists( $file_path ) ) {
 				// Usar wp_delete_file para eliminar el archivo de manera segura.
-				$deleted = wp_delete_file( $file_path );
+				wp_delete_file( $file_path );
 
-				if ( $deleted ) {
-					// Redireccionar solo después de eliminar con éxito.
-					wp_safe_redirect( admin_url( 'tools.php?page=jc-logs&tab=explore' ) );
-					exit;
-				} else {
-					// Si la eliminación falla por alguna razón, mostrar un mensaje de error.
-					wp_die( esc_html__( 'Failed to delete the file.', 'jc-logs' ) );
-				}
+				// Redirigir después de la eliminación exitosa, sin verificar el retorno.
+				wp_safe_redirect( admin_url( 'tools.php?page=jc-logs&tab=explore' ) );
+				exit;
 			} else {
 				// Si el archivo no existe, no se debería intentar eliminar.
 				wp_die( esc_html__( 'The file does not exist.', 'jc-logs' ) );
