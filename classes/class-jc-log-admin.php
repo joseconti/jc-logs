@@ -721,21 +721,24 @@ class JC_Log_Admin {
 			wp_die( esc_html__( 'You do not have permission to perform this action.', 'jc-logs' ) );
 		}
 
-		if ( isset( $_GET['file'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['file'] ) ) {
 			$file      = sanitize_file_name( wp_unslash( $_GET['file'] ) );
 			$file_path = $this->log_directory . $file;
 
 			if ( file_exists( $file_path ) ) {
-				// Reemplazar unlink() con wp_delete_file().
+				// Usar wp_delete_file para eliminar el archivo de manera segura.
 				$deleted = wp_delete_file( $file_path );
 
 				if ( $deleted ) {
+					// Redireccionar solo después de eliminar con éxito.
 					wp_safe_redirect( admin_url( 'tools.php?page=jc-logs&tab=explore' ) );
 					exit;
 				} else {
+					// Si la eliminación falla por alguna razón, mostrar un mensaje de error.
 					wp_die( esc_html__( 'Failed to delete the file.', 'jc-logs' ) );
 				}
 			} else {
+				// Si el archivo no existe, no se debería intentar eliminar.
 				wp_die( esc_html__( 'The file does not exist.', 'jc-logs' ) );
 			}
 		}
