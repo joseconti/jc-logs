@@ -71,16 +71,45 @@ class JC_Log implements LoggerInterface {
 	 * Initialize the logs directory and security token.
 	 */
 	public function initialize() {
-		$upload_dir           = wp_upload_dir();
-		$this->log_directory  = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
-		$this->security_token = wp_hash( 'jc_logs_security' );
+		// Define the directory where logs will be stored.
+		$this->log_directory = WP_CONTENT_DIR . '/uploads/jc-logs/';
+		// Generate a security token using a random string.
+		$this->security_token = bin2hex( random_bytes( 16 ) );
 
-		// Create the logs directory if it doesn't exist.
-		if ( ! file_exists( $this->log_directory ) ) {
-			wp_mkdir_p( $this->log_directory );
+		// Initialize the WP_Filesystem for interacting with the file system.
+		if ( ! function_exists( 'WP_Filesystem' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 
-		// Register the shutdown function to capture fatal errors.
+		WP_Filesystem();
+		global $wp_filesystem;
+
+		// Check if the logs directory exists; if not, attempt to create it.
+		if ( ! $wp_filesystem->is_dir( $this->log_directory ) ) {
+			// Attempt to create the logs directory using wp_mkdir_p().
+			if ( ! wp_mkdir_p( $this->log_directory ) ) {
+				wp_die( esc_html__( 'Unable to create the logs directory. Please check the permissions.', 'jc-logs' ) );
+			}
+		}
+
+		// Verify if the logs directory is writable.
+		if ( ! $wp_filesystem->is_writable( $this->log_directory ) ) {
+			wp_die( esc_html__( 'The logs directory is not writable. Please check the permissions.', 'jc-logs' ) );
+		}
+
+		// Test write operation: create a temporary file to ensure the directory is writable.
+		$test_file_path = trailingslashit( $this->log_directory ) . 'test_write.log';
+		$test_content   = 'This is a test write operation.';
+
+		// Try to write content to the test file.
+		if ( ! $wp_filesystem->put_contents( $test_file_path, $test_content, FS_CHMOD_FILE ) ) {
+			wp_die( esc_html__( 'Unable to write to the logs directory. Please check the permissions.', 'jc-logs' ) );
+		}
+
+		// Remove the test file after the write operation is confirmed.
+		$wp_filesystem->delete( $test_file_path );
+
+		// Register a shutdown function to capture and handle any fatal errors that occur.
 		register_shutdown_function( array( $this, 'handle_shutdown' ) );
 	}
 
@@ -205,22 +234,31 @@ class JC_Log implements LoggerInterface {
 	 * @param array  $context The log context, an array of additional information.
 	 */
 	public function log( $level, $message, array $context = array() ) {
+		// Initialize the logging directory if not already set.
 		if ( empty( $this->log_directory ) ) {
 			$this->initialize();
 		}
 
-		if ( ! get_option( 'jc_logs_enable_logging', 0 ) ) {
+		// Check if logging is enabled.
+		if ( ! get_option( 'jc_logs_enable_logging', 1 ) ) {
 			return;
 		}
 
+		// Verify the storage method, defaulting to 'file' if not set.
 		$storage_method = get_option( 'jc_logs_storage_method', 'file' );
 
-		// Codificar el contexto completo como JSON.
+		// Ensure 'file' is used as the default if an invalid method is specified.
+		if ( ! in_array( $storage_method, array( 'file', 'database' ), true ) ) {
+			$storage_method = 'file';
+		}
+
+		// Encode the entire context as JSON.
 		$context_json = wp_json_encode( $context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
 
-		// Concatenar el contexto JSON al mensaje.
+		// Append the JSON-encoded context to the message.
 		$message .= ' ' . $context_json;
 
+		// Write the log based on the selected storage method.
 		if ( 'file' === $storage_method ) {
 			$this->write_log_to_file( $level, $message );
 		} elseif ( 'database' === $storage_method ) {
@@ -229,13 +267,13 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Write the log to a file.
+	 * Write a log entry to a file.
 	 *
-	 * @param string $level   The log level (e.g., emergency, alert, critical, error, warning, notice, info, debug).
-	 * @param string $message The log message.
+	 * @param string $level   The severity level of the log (e.g., 'INFO', 'ERROR').
+	 * @param string $message The log message to write.
 	 */
 	private function write_log_to_file( $level, $message ) {
-		$date     = gmdate( 'Y-m-d' );
+		$date     = current_time( 'Y-m-d' ); // Use WordPress time for the date.
 		$log_name = $this->log_name;
 
 		// Pattern to search for existing log files with the same log_name and date.
@@ -267,20 +305,27 @@ class JC_Log implements LoggerInterface {
 
 		if ( empty( $file_path ) ) {
 			// If no suitable file exists, create a new one with a random string.
-			$random_string = substr( md5( uniqid( wp_rand(), true ) ), 0, 10 );
+			$random_string = substr( md5( uniqid( random_int( 0, PHP_INT_MAX ), true ) ), 0, 10 );
 			$file_name     = "{$log_name}-{$date}-{$random_string}.log";
 			$file_path     = $this->log_directory . $file_name;
 		}
 
-		$current_time = current_time( 'Y-m-d H:i:s' );
+		$current_time = current_time( 'Y-m-d H:i:s' ); // Use WordPress time for the log entry.
 		$log_entry    = "[{$current_time}] {$level}: {$message}" . PHP_EOL;
+
+		// Initialize the WP_Filesystem for handling file operations.
 		global $wp_filesystem;
 		if ( ! function_exists( 'WP_Filesystem' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
 		WP_Filesystem();
 
-		// Read the existing content if the file exists.
+		// Check if the directory is writable before proceeding.
+		if ( ! $wp_filesystem->is_writable( $this->log_directory ) ) {
+			wp_die( esc_html__( 'The logs directory is not writable. Please check the permissions.', 'jc-logs' ) );
+		}
+
+		// Check if the file exists and read its content if it does.
 		$existing_content = '';
 		if ( $wp_filesystem->exists( $file_path ) ) {
 			$existing_content = $wp_filesystem->get_contents( $file_path );
@@ -378,20 +423,49 @@ class JC_Log implements LoggerInterface {
 
 	/**
 	 * Activation hook to create the logs table.
+	 *
+	 * @param bool $network_wide Whether to activate the plugin for all sites in the network.
 	 */
-	public static function activate() {
-		$instance = self::get_instance();
-		$instance->initialize();
-		$instance->create_logs_table();
+	public static function activate( $network_wide ) {
+		if ( is_multisite() && $network_wide ) {
+			// Activar el plugin para toda la red.
+			$sites = get_sites();
+			foreach ( $sites as $site ) {
+				switch_to_blog( $site->blog_id );
+				$instance = self::get_instance();
+				$instance->initialize();
+				restore_current_blog();
+			}
+		} else {
+			// Activar el plugin para un solo sitio.
+			$instance = self::get_instance();
+			$instance->initialize();
+		}
 	}
 
 	/**
-	 * Deactivation hook to drop the logs table.
+	 * Deactivation hook to remove logs for all sites in the network.
+	 *
+	 * @param bool $network_wide Whether to deactivate the plugin for all sites in the network.
 	 */
-	public static function deactivate() {
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'jc_logs';
-		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %s', $table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange
-		wp_cache_delete( 'jc_logs_table', 'jc_logs' );
+	public static function deactivate( $network_wide ) {
+		if ( is_multisite() && $network_wide ) {
+			// Desactivar el plugin para toda la red.
+			$sites = get_sites();
+			foreach ( $sites as $site ) {
+				switch_to_blog( $site->blog_id );
+				global $wpdb;
+				$table_name = $wpdb->prefix . 'jc_logs';
+				$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %s', $table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange
+				wp_cache_delete( 'jc_logs_table', 'jc_logs' );
+				restore_current_blog();
+			}
+		} else {
+			// Desactivar el plugin para un solo sitio.
+			global $wpdb;
+			$table_name = $wpdb->prefix . 'jc_logs';
+			$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %s', $table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange
+			wp_cache_delete( 'jc_logs_table', 'jc_logs' );
+		}
 	}
 }

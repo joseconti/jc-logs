@@ -1,6 +1,6 @@
 <?php
 /**
- * Clase para manejar la página de administración del plugin.
+ * Class to handle the plugin's admin page.
  *
  * @package JC_Logs
  */
@@ -8,7 +8,7 @@
 namespace JC_Logs;
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Salir si se accede directamente.
+	exit; // Exit if accessed directly.
 }
 
 /**
@@ -42,16 +42,16 @@ class JC_Log_Admin {
 	 *
 	 * @var int
 	 */
-	private $logs_per_page = 20; // Número de logs por página.
+	private $logs_per_page = 20; // Number of logs per page.
 
 	/**
-	 * Constructor privado para implementar el patrón Singleton.
+	 * Private constructor to implement the Singleton pattern.
 	 */
 	private function __construct() {
-		// Inicializar variables dependientes de WordPress.
+		// Initialize WordPress dependent variables.
 		add_action( 'init', array( $this, 'initialize' ) );
 
-		// Hooks para el área de administración.
+		// Hooks for the admin area.
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_post_jc_logs_download', array( $this, 'download_log_file' ) );
 		add_action( 'admin_post_jc_logs_delete', array( $this, 'delete_log_file' ) );
@@ -60,9 +60,9 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Obtener la instancia única de la clase.
+	 * Get the single instance of the class.
 	 *
-	 * @return JC_Log_Admin La instancia única de JC_Log_Admin.
+	 * @return JC_Log_Admin The single instance of JC_Log_Admin.
 	 */
 	public static function get_instance() {
 		if ( null === self::$instance ) {
@@ -73,21 +73,21 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Inicializar el directorio de logs.
+	 * Initialize the logs directory.
 	 */
 	public function initialize() {
 		global $wpdb;
 
-		$upload_dir          = wp_upload_dir();
-		$this->log_directory = trailingslashit( $upload_dir['basedir'] ) . 'jc-logs/';
+		// Always use the centralized directory.
+		$this->log_directory = WP_CONTENT_DIR . '/uploads/jc-logs/';
 		$this->table_name    = $wpdb->prefix . 'jc_logs';
 
-		// Crear el directorio de logs si no existe.
+		// Create the logs directory if it doesn't exist.
 		if ( ! file_exists( $this->log_directory ) ) {
 			wp_mkdir_p( $this->log_directory );
 		}
 
-		// Inicializar WP_Filesystem.
+		// Initialize WP_Filesystem.
 		if ( ! function_exists( 'WP_Filesystem' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
@@ -95,7 +95,7 @@ class JC_Log_Admin {
 		WP_Filesystem();
 		global $wp_filesystem;
 
-		// Crear el archivo .htaccess para proteger el directorio de logs.
+		// Create the .htaccess file to protect the logs directory.
 		$htaccess_file = trailingslashit( $this->log_directory ) . '.htaccess';
 		if ( ! $wp_filesystem->exists( $htaccess_file ) ) {
 			$htaccess_content = "Deny from all\n";
@@ -108,7 +108,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Función para añadir el menú en el área de administración.
+	 * Function to add the menu in the admin area.
 	 */
 	public function add_admin_menu() {
 		add_management_page(
@@ -121,27 +121,27 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Función para mostrar la página de logs.
+	 * Function to display the logs page.
 	 */
 	public function logs_page() {
-		// Verificar capacidades.
+		// Check capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
-		// Iniciar el contenedor.
+		// Start the container.
 		echo '<div class="wrap">';
 
-		// Añadir el título principal.
+		// Add the main title.
 		echo '<h1>' . esc_html__( 'JC Logs', 'jc-logs' ) . '</h1>';
 
-		// Determinar la pestaña actual.
+		// Determine the current tab.
 		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'explore'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		// Mostrar las pestañas.
+		// Display the tabs.
 		$this->render_tabs( $tab );
 
-		// Manejar el contenido basado en la pestaña activa.
+		// Handle the content based on the active tab.
 		switch ( $tab ) {
 			case 'explore':
 				$this->render_explore_page();
@@ -154,14 +154,14 @@ class JC_Log_Admin {
 				break;
 		}
 
-		// Cerrar el contenedor.
+		// Close the container.
 		echo '</div>';
 	}
 
 	/**
-	 * Renderizar las pestañas en la parte superior de la página.
+	 * Render the tabs at the top of the page.
 	 *
-	 * @param string $current Pestaña activa.
+	 * @param string $current Active tab.
 	 */
 	private function render_tabs( $current = 'explore' ) {
 		$tabs = array(
@@ -184,48 +184,67 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Renderizar la página de exploración, que lista los logs o muestra el contenido de un log.
+	 * Render the exploration page, which lists the logs or shows the content of a log.
 	 */
 	private function render_explore_page() {
-		// Verificar si se seleccionó un archivo de log para ver.
+		// Check if a log file was selected for viewing.
 		if ( isset( $_GET['file'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			// Mostrar el contenido del archivo de log seleccionado.
+			// Show the content of the selected log file.
 			$this->render_log_content();
 		} elseif ( isset( $_GET['log_name'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			// Mostrar el contenido del log seleccionado desde la base de datos.
+			// Show the content of the selected log from the database.
 			$this->render_log_content_database();
 		} else {
-			// Mostrar la lista de logs con paginación.
+			// Show the list of logs with pagination.
 			$this->render_log_list();
 		}
 	}
 
 	/**
-	 * Renderizar la lista de logs con paginación.
+	 * Render the list of logs with pagination.
 	 */
 	private function render_log_list() {
 		global $wpdb;
 
-		// Obtener logs desde archivos.
+		// Check if pagination is present.
+		$is_paged = false;
+		if ( isset( $_GET['paged'] ) ) {
+			$is_paged = true;
+		}
+
+		// If pagination is present, verify the nonce.
+		if ( $is_paged ) {
+			$paged_nonce = isset( $_GET['jc_logs_paged_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['jc_logs_paged_nonce'] ) ) : '';
+			if ( empty( $paged_nonce ) || ! wp_verify_nonce( $paged_nonce, 'jc_logs_paged_nonce' ) ) {
+				wp_die( esc_html__( 'Invalid pagination request.', 'jc-logs' ) );
+			}
+		}
+
+		// Get the current page number.
+		$current_page = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1;
+
+		// Get logs from files in the centralized directory.
 		$log_files = glob( $this->log_directory . '*.log' );
 
-		// Obtener logs desde la base de datos.
+		// Get logs from the database.
 		$cache_key     = 'jc_logs_database_logs';
 		$database_logs = wp_cache_get( $cache_key, 'jc_logs' );
 
 		if ( false === $database_logs ) {
-			$query         = $wpdb->prepare(
-				'SELECT log_name, MIN(timestamp) AS creation_time, MAX(timestamp) AS modification_time FROM {$this->table_name} GROUP BY log_name'
-			); // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnnecessaryPrepare
-			$database_logs = $wpdb->get_results( $query ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery
-			// Almacenar en caché durante 5 minutos.
+			$database_logs = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				$wpdb->prepare(
+					'SELECT log_name, MIN(timestamp) AS creation_time, MAX(timestamp) AS modification_time FROM %s GROUP BY log_name',
+					$this->table_name
+				)
+			);
+			// Cache for 5 minutes.
 			wp_cache_set( $cache_key, $database_logs, 'jc_logs', 300 );
 		}
 
-		// Preparar un array para contener todos los logs.
+		// Prepare an array to hold all logs.
 		$all_logs = array();
 
-		// Procesar logs de archivos.
+		// Process log files.
 		if ( ! empty( $log_files ) ) {
 			foreach ( $log_files as $file ) {
 				$file_name         = basename( $file );
@@ -234,11 +253,10 @@ class JC_Log_Admin {
 				$file_size         = filesize( $file );
 				$log_name          = $this->extract_log_name( $file_name );
 
-				// Extraer la fecha del nombre del archivo
-				// Suponiendo que el formato es {log_name}-YYYY-MM-DD-{random_string}.log.
-				$date = substr( $file_name, strlen( $log_name ) + 1, 10 ); // Extrae YYYY-MM-DD.
+				// Extract the date from the file name.
+				$date = substr( $file_name, strlen( $log_name ) + 1, 10 ); // Extract YYYY-MM-DD.
 
-				// Identificar si ya existe una entrada para este log_name y date.
+				// Identify if there is already an entry for this log_name and date.
 				$key = "{$log_name}-{$date}";
 				if ( ! isset( $all_logs[ $key ] ) ) {
 					$all_logs[ $key ] = array(
@@ -253,20 +271,20 @@ class JC_Log_Admin {
 
 				$all_logs[ $key ]['file_names'][] = $file_name;
 				$all_logs[ $key ]['file_size']   += $file_size;
-				// Actualizar la fecha de modificación si el archivo actual es más reciente.
+				// Update modification date if the current file is more recent.
 				if ( strtotime( $modification_time ) > strtotime( $all_logs[ $key ]['modification_time'] ) ) {
 					$all_logs[ $key ]['modification_time'] = $modification_time;
 				}
 			}
 		}
 
-		// Procesar logs de la base de datos.
+		// Process logs from the database.
 		if ( ! empty( $database_logs ) ) {
 			foreach ( $database_logs as $log ) {
 				$log_name          = $log->log_name;
 				$creation_time     = $log->creation_time;
 				$modification_time = $log->modification_time;
-				// Dado que el tamaño del archivo no aplica, establecer en '-'.
+				// Since file size doesn't apply, set it to '-'.
 				$file_size = '-';
 
 				$all_logs[] = array(
@@ -280,10 +298,10 @@ class JC_Log_Admin {
 			}
 		}
 
-		// Convertir el array asociativo a un array indexado para usort.
+		// Convert the associative array to an indexed array for usort.
 		$all_logs = array_values( $all_logs );
 
-		// Ordenar los logs por fecha de modificación descendente.
+		// Sort the logs by modification date in descending order.
 		usort(
 			$all_logs,
 			function ( $a, $b ) {
@@ -291,16 +309,15 @@ class JC_Log_Admin {
 			}
 		);
 
-		// Implementar Paginación.
-		$current_page = isset( $_GET['paged'] ) ? max( 1, intval( $_GET['paged'] ) ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$total_logs   = count( $all_logs );
-		$total_pages  = ceil( $total_logs / $this->logs_per_page );
+		// Implement pagination.
+		$total_logs  = count( $all_logs );
+		$total_pages = ceil( $total_logs / $this->logs_per_page );
 
-		// Obtener los logs para la página actual.
+		// Get the logs for the current page.
 		$offset       = ( $current_page - 1 ) * $this->logs_per_page;
 		$logs_to_show = array_slice( $all_logs, $offset, $this->logs_per_page );
 
-		// Definir etiquetas y atributos permitidos para $actions.
+		// Define allowed HTML tags for $actions.
 		$allowed_html = array(
 			'a' => array(
 				'href'    => array(),
@@ -310,7 +327,7 @@ class JC_Log_Admin {
 			),
 		);
 
-		// Mostrar todos los logs en una tabla.
+		// Display all logs in a table.
 		echo '<h2>' . esc_html__( 'Available Logs', 'jc-logs' ) . '</h2>';
 		echo '<table class="wp-list-table widefat fixed striped">';
 		echo '<thead>';
@@ -335,26 +352,27 @@ class JC_Log_Admin {
 				$actions           = '';
 
 				if ( 'file' === $source ) {
-					// Mostrar solo el primer archivo en las acciones.
-					$file_name    = $log['file_names'][0];
-					$view_url     = add_query_arg(
+					// Show only the first file in the actions.
+					$file_name      = $log['file_names'][0];
+					$base_file_name = basename( $file_name, '.log' );
+					$view_url       = add_query_arg(
 						array(
 							'page' => 'jc-logs',
 							'tab'  => 'explore',
-							'file' => rawurlencode( $file_name ),
+							'file' => rawurlencode( $base_file_name ),
 						),
 						admin_url( 'tools.php' )
 					);
-					$download_url = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_download&file=' . rawurlencode( $file_name ) ), 'jc_logs_download', 'jc_logs_nonce' );
-					$delete_url   = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_delete&file=' . rawurlencode( $file_name ) ), 'jc_logs_delete', 'jc_logs_nonce' );
+
+					$view_url     = wp_nonce_url( $view_url, 'view_log_nonce', 'jc_logs_nonce' );
+					$download_url = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_download&file=' . rawurlencode( $base_file_name ) ), 'jc_logs_download', 'jc_logs_nonce' );
+					$delete_url   = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_delete&file=' . rawurlencode( $base_file_name ) ), 'jc_logs_delete', 'jc_logs_nonce' );
 
 					$actions .= '<a class="button" href="' . esc_url( $view_url ) . '">' . esc_html__( 'View', 'jc-logs' ) . '</a> ';
 					$actions .= '<a class="button" href="' . esc_url( $download_url ) . '">' . esc_html__( 'Download', 'jc-logs' ) . '</a> ';
 					$actions .= '<a class="button delete-log" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this file?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Delete', 'jc-logs' ) . '</a>';
 
-					// Hacer que el nombre del log sea clicable.
 					$log_name_display = '<a href="' . esc_url( $view_url ) . '">' . esc_html( $log_name ) . '</a>';
-
 				} elseif ( 'database' === $source ) {
 					$view_url   = add_query_arg(
 						array(
@@ -369,15 +387,15 @@ class JC_Log_Admin {
 					$actions .= '<a class="button" href="' . esc_url( $view_url ) . '">' . esc_html__( 'View', 'jc-logs' ) . '</a> ';
 					$actions .= '<a class="button delete-log" href="' . esc_url( $delete_url ) . '" style="background-color: #dc3232; color: #fff;" onclick="return confirm(\'' . esc_js( __( 'Are you sure you want to delete this log from the database?', 'jc-logs' ) ) . '\');">' . esc_html__( 'Delete', 'jc-logs' ) . '</a>';
 
-					// Hacer que el nombre del log sea clicable.
+					// Make the log name clickable.
 					$log_name_display = '<a href="' . esc_url( $view_url ) . '">' . esc_html( $log_name ) . '</a>';
 				}
 
-				// Formatear fechas para la visualización.
+				// Format dates for display.
 				$creation_time_display     = ! empty( $creation_time ) ? esc_html( date_i18n( 'Y-m-d H:i:s', strtotime( $creation_time ) ) ) : '-';
 				$modification_time_display = ! empty( $modification_time ) ? esc_html( date_i18n( 'Y-m-d H:i:s', strtotime( $modification_time ) ) ) : '-';
 
-				// Formatear tamaño del archivo.
+				// Format file size.
 				if ( 'file' === $source ) {
 					$file_size_display = size_format( $file_size, 2 );
 				} else {
@@ -385,13 +403,12 @@ class JC_Log_Admin {
 				}
 
 				echo '<tr>';
-				// Escapar correctamente 'log_name_display' permitiendo solo la etiqueta <a>.
+				// Properly escape 'log_name_display' allowing only the <a> tag.
 				echo '<td>' . wp_kses( $log_name_display, array( 'a' => array( 'href' => array() ) ) ) . '</td>';
 				echo '<td>' . esc_html( ucfirst( $source ) ) . '</td>';
 				echo '<td>' . esc_html( $creation_time_display ) . '</td>';
 				echo '<td>' . esc_html( $modification_time_display ) . '</td>';
 				echo '<td>' . esc_html( $file_size_display ) . '</td>';
-				// Sanitizar $actions con wp_kses().
 				echo '<td>' . wp_kses( $actions, $allowed_html ) . '</td>';
 				echo '</tr>';
 			}
@@ -404,21 +421,21 @@ class JC_Log_Admin {
 		echo '</tbody>';
 		echo '</table>';
 
-		// Mostrar Paginación.
+		// Display pagination.
 		if ( $total_pages > 1 ) {
 			echo '<div class="tablenav top">';
 			echo '<div class="tablenav-pages">';
 			$paginate_links = paginate_links(
 				array(
-					'base'      => add_query_arg( 'paged', '%#%' ),
+					'base'      => add_query_arg( array( 'paged' => '%#%' ) ),
 					'format'    => '',
 					'prev_text' => __( '&laquo;', 'jc-logs' ),
 					'next_text' => __( '&raquo;', 'jc-logs' ),
 					'total'     => $total_pages,
 					'current'   => $current_page,
+					'add_args'  => array( 'jc_logs_paged_nonce' => wp_create_nonce( 'jc_logs_paged_nonce' ) ),
 				)
 			);
-			// Escapar correctamente el contenido de paginate_links().
 			echo wp_kses_post( $paginate_links );
 			echo '</div>';
 			echo '</div>';
@@ -426,34 +443,40 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Extraer el nombre base del log sin la fecha y el sufijo aleatorio.
+	 * Extract the base log name without the date and random suffix.
 	 *
-	 * @param string $file_name Nombre completo del archivo de log.
-	 * @return string Nombre base del log.
+	 * @param string $file_name Full log file name.
+	 * @return string Base log name.
 	 */
 	private function extract_log_name( $file_name ) {
-		// Remover la extensión .log.
+		// Remove the .log extension.
 		$base_name = str_replace( '.log', '', $file_name );
 
-		// Patrón para coincidir con {log_name}-YYYY-MM-DD-{random_string}.
+		// Pattern to match {log_name}-YYYY-MM-DD-{random_string}.
 		if ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}-[a-f0-9]{10}$/', $base_name, $matches ) ) {
-			return $matches[1]; // Retornar el nombre base del log.
+			return $matches[1]; // Return the base log name.
 		} elseif ( preg_match( '/^(.*)-\d{4}-\d{2}-\d{2}$/', $base_name, $matches ) ) {
-			return $matches[1]; // Retornar el nombre base del log sin sufijo aleatorio.
+			return $matches[1]; // Return the base log name without random suffix.
 		} else {
 			return $base_name;
 		}
 	}
 
 	/**
-	 * Renderizar el contenido de un archivo de log seleccionado.
+	 * Render the content of a selected log file.
 	 */
 	private function render_log_content() {
+
+		$jc_logs_nonce = isset( $_GET['jc_logs_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['jc_logs_nonce'] ) ) : '';
+		if ( empty( $jc_logs_nonce ) || ! wp_verify_nonce( $jc_logs_nonce, 'view_log_nonce' ) ) {
+			wp_die( esc_html__( 'Invalid request. Nonce verification failed.', 'jc-logs' ) );
+		}
+
 		$file      = isset( $_GET['file'] ) ? sanitize_file_name( wp_unslash( $_GET['file'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$file_path = $this->log_directory . $file;
+		$file_path = $this->log_directory . $file . '.log';
 
 		if ( file_exists( $file_path ) ) {
-			// Inicializar WP_Filesystem.
+			// Initialize WP_Filesystem.
 			if ( ! function_exists( 'WP_Filesystem' ) ) {
 				require_once ABSPATH . 'wp-admin/includes/file.php';
 			}
@@ -461,19 +484,19 @@ class JC_Log_Admin {
 			WP_Filesystem();
 			global $wp_filesystem;
 
-			// Obtener el contenido del archivo.
+			// Get the file content.
 			$content = $wp_filesystem->get_contents( $file_path );
 
 			if ( false === $content ) {
 				wp_die( esc_html__( 'Unable to read the file.', 'jc-logs' ) );
 			}
 
-			// URLs para acciones.
+			// URLs for actions.
 			$download_url = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_download&file=' . rawurlencode( $file ) ), 'jc_logs_download', 'jc_logs_nonce' );
 			$delete_url   = wp_nonce_url( admin_url( 'admin-post.php?action=jc_logs_delete&file=' . rawurlencode( $file ) ), 'jc_logs_delete', 'jc_logs_nonce' );
 			$back_url     = admin_url( 'tools.php?page=jc-logs&tab=explore' );
 
-			// Título y botones.
+			// Title and buttons.
 			// translators: %s is the name of the log file being viewed.
 			echo '<h2>' . sprintf( esc_html__( 'Viewing log file: %s', 'jc-logs' ), esc_html( $file ) ) . '</h2>';
 			echo '<p>';
@@ -482,9 +505,9 @@ class JC_Log_Admin {
 			echo '<a class="button" href="' . esc_url( $back_url ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 			echo '</p>';
 
-			// Contenido del log.
+			// Log content.
 			echo '<pre style="background-color: #fff; padding: 20px; border: 1px solid #ccc; max-width: 100%; overflow: auto;">';
-			echo esc_html( $content ); // Escapar el contenido antes de imprimir.
+			echo esc_html( $content ); // Escape the content before printing.
 			echo '</pre>';
 		} else {
 			echo '<h2>' . esc_html__( 'Error', 'jc-logs' ) . '</h2>';
@@ -494,7 +517,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Renderizar el contenido de un log seleccionado desde la base de datos.
+	 * Render the content of a selected log from the database.
 	 */
 	private function render_log_content_database() {
 		global $wpdb;
@@ -509,15 +532,15 @@ class JC_Log_Admin {
 			return;
 		}
 
-		// Implementar caché para las entradas del log.
+		// Implement caching for the log entries.
 		$cache_key = 'jc_logs_log_entries_' . md5( $log_name );
 		$logs      = wp_cache_get( $cache_key, 'jc_logs' );
 
 		if ( false === $logs ) {
-			// Recuperar entradas de log desde la base de datos usando consultas preparadas.
+			// Fetch log entries from the database using prepared statements.
 			$logs = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $wpdb->prefix . 'jc_logs WHERE log_name = %s ORDER BY timestamp DESC', $log_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 
-			// Almacenar en caché durante 5 minutos.
+			// Cache the result for 5 minutes.
 			wp_cache_set( $cache_key, $logs, 'jc_logs', 300 );
 		}
 
@@ -529,7 +552,7 @@ class JC_Log_Admin {
 			echo '<a class="button" href="' . esc_url( $back_url ) . '">' . esc_html__( 'Back to list', 'jc-logs' ) . '</a>';
 			echo '</p>';
 
-			// Mostrar las entradas de log en una tabla.
+			// Display log entries in a table.
 			echo '<table class="wp-list-table widefat fixed striped">';
 			echo '<thead>';
 			echo '<tr>';
@@ -556,16 +579,16 @@ class JC_Log_Admin {
 		}
 	}
 
+
 	/**
-	 * Registrar configuraciones, secciones y campos para la página de configuración.
+	 * Register settings, sections, and fields for the settings page.
 	 */
 	public function register_settings() {
-		// Registrar configuraciones.
+		// Register settings.
 		register_setting( 'jc_logs_settings', 'jc_logs_enable_logging' );
 		register_setting( 'jc_logs_settings', 'jc_logs_storage_method' );
 		register_setting( 'jc_logs_settings', 'jc_logs_retention_days' );
 
-		// Añadir sección de configuraciones.
 		add_settings_section(
 			'jc_logs_main_section',
 			__( 'Log Settings', 'jc-logs' ),
@@ -573,7 +596,6 @@ class JC_Log_Admin {
 			'jc_logs_settings_page'
 		);
 
-		// Añadir campos de configuraciones.
 		add_settings_field(
 			'jc_logs_enable_logging',
 			__( 'Enable Logging', 'jc-logs' ),
@@ -600,7 +622,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Renderizar el campo de habilitar logging.
+	 * Render the enable logging field.
 	 */
 	public function render_enable_logging_field() {
 		$value = get_option( 'jc_logs_enable_logging', 0 );
@@ -611,7 +633,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Renderizar el campo de método de almacenamiento.
+	 * Render the storage method field.
 	 */
 	public function render_storage_method_field() {
 		$value = get_option( 'jc_logs_storage_method', 'file' );
@@ -627,7 +649,7 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Renderizar el campo de período de retención.
+	 * Render the retention period field.
 	 */
 	public function render_retention_period_field() {
 		$value = get_option( 'jc_logs_retention_days', '30' );
@@ -639,25 +661,25 @@ class JC_Log_Admin {
 	}
 
 	/**
-	 * Renderizar la página de configuraciones.
+	 * Render the settings page.
 	 */
 	private function render_settings_page() {
-		// Obtener la ruta del directorio de logs y el tamaño.
+		// Get the log directory path and size.
 		$log_directory  = $this->log_directory;
 		$directory_size = $this->get_directory_size( $log_directory );
 
 		echo '<h2>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h2>';
 
 		echo '<form method="post" action="options.php">';
-		// Salida de campos de seguridad para la configuración registrada "jc_logs_settings".
+		// Output security fields for the registered setting "jc_logs_settings".
 		settings_fields( 'jc_logs_settings' );
-		// Salida de secciones de configuración y sus campos.
+		// Output setting sections and their fields.
 		do_settings_sections( 'jc_logs_settings_page' );
-		// Salida del botón de guardar configuraciones.
+		// Output save settings button.
 		submit_button();
 		echo '</form>';
 
-		// Mostrar ubicación y tamaño del directorio.
+		// Display log directory location and size.
 		echo '<h2>' . esc_html__( 'Location', 'jc-logs' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Log files are stored in this directory:', 'jc-logs' ) . ' <code>' . esc_html( $log_directory ) . '</code></p>';
 		echo '<p>' . esc_html__( 'Directory size:', 'jc-logs' ) . ' ' . esc_html( size_format( $directory_size, 2 ) ) . '</p>';
@@ -675,7 +697,7 @@ class JC_Log_Admin {
 
 		if ( isset( $_GET['file'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$file      = sanitize_file_name( wp_unslash( $_GET['file'] ) );
-			$file_path = $this->log_directory . $file;
+			$file_path = $this->log_directory . $file . '.log';
 
 			if ( file_exists( $file_path ) ) {
 				// Inicializar WP_Filesystem.
@@ -723,7 +745,7 @@ class JC_Log_Admin {
 
 		if ( isset( $_GET['file'] ) ) {
 			$file      = sanitize_file_name( wp_unslash( $_GET['file'] ) );
-			$file_path = $this->log_directory . $file;
+			$file_path = $this->log_directory . $file . '.log';
 
 			if ( file_exists( $file_path ) ) {
 				// Usar wp_delete_file para eliminar el archivo de manera segura.
@@ -788,5 +810,5 @@ class JC_Log_Admin {
 	}
 }
 
-// Inicializar la clase.
+// Initialize the class.
 JC_Log_Admin::get_instance();
