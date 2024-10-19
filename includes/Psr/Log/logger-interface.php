@@ -2,6 +2,13 @@
 /**
  * PSR-3 logger interface.
  *
+ * This file is part of the PSR-3 logger interface that defines a common interface for logging libraries.
+ *
+ * @link https://www.php-fig.org/psr/psr-3/
+ * @link htts://plugins.joseconti.com
+ * @author José Conti
+ * @copyright 2024 José Conti
+ *
  * @package Psr\Log
  */
 

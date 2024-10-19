@@ -3,10 +3,15 @@
  * Plugin Name: JC Logs
  * Description: A plugin to handle custom logs in WordPress, implementing PSR-3.
  * Version: 1.0.0
- * Author: Your Name
+ * Author: José Conti
+ * Author URI: https://plugins.joseconti.com
  * Text Domain: jc-logs
  * Network: true
  * Domain Path: /languages
+ * Requires at least: 5.2
+ * Requires PHP: 7.4
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  *
  * @package JC_Logs
  */
@@ -15,15 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-define( 'JC_LOGS_VERSION', '1.0.0' );
-define( 'JC_LOGS_PATH', plugin_dir_path( __FILE__ ) );
-define( 'JC_LOGS_URL', plugin_dir_url( __FILE__ ) );
-
-
-require_once JC_LOGS_PATH . '/includes/Psr/Log/logger-interface.php';
-require_once JC_LOGS_PATH . '/includes/Psr/Log/class-loglevel.php';
-require_once JC_LOGS_PATH . '/classes/class-jc-log.php';
-require_once JC_LOGS_PATH . '/classes/class-jc-log-admin.php';
+require_once 'includes/Psr/Log/logger-interface.php';
+require_once 'includes/Psr/Log/class-loglevel.php';
+require_once 'classes/class-jc-log.php';
+require_once 'classes/class-jc-log-admin.php';
 
 // Initialize the plugin after WordPress has fully loaded.
 add_action( 'plugins_loaded', 'initialize_jc_logs', 20 );

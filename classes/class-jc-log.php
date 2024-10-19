@@ -1,6 +1,11 @@
 <?php
 /**
- * PSR-3 logger interface.
+ * Class JC_Log
+ *
+ * @link https://www.php-fig.org/psr/psr-3/
+ * @link htts://plugins.joseconti.com
+ * @author José Conti
+ * @copyright 2024 José Conti
  *
  * @package Psr\Log
  */

@@ -2,7 +2,12 @@
 /**
  * Class to handle the plugin's admin page.
  *
- * @package JC_Logs
+ * @link https://www.php-fig.org/psr/psr-3/
+ * @link htts://plugins.joseconti.com
+ * @author José Conti
+ * @copyright 2024 José Conti
+ *
+ * @package Psr\Log
  */
 
 namespace JC_Logs;
