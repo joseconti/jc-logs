@@ -586,7 +586,6 @@ class JC_Log_Admin {
 	public function register_settings() {
 		// Register settings.
 		register_setting( 'jc_logs_settings', 'jc_logs_enable_logging' );
-		register_setting( 'jc_logs_settings', 'jc_logs_storage_method' );
 		register_setting( 'jc_logs_settings', 'jc_logs_retention_days' );
 
 		add_settings_section(
@@ -600,14 +599,6 @@ class JC_Log_Admin {
 			'jc_logs_enable_logging',
 			__( 'Enable Logging', 'jc-logs' ),
 			array( $this, 'render_enable_logging_field' ),
-			'jc_logs_settings_page',
-			'jc_logs_main_section'
-		);
-
-		add_settings_field(
-			'jc_logs_storage_method',
-			__( 'Log Storage', 'jc-logs' ),
-			array( $this, 'render_storage_method_field' ),
 			'jc_logs_settings_page',
 			'jc_logs_main_section'
 		);
@@ -630,22 +621,6 @@ class JC_Log_Admin {
 		echo '<input type="checkbox" name="jc_logs_enable_logging" value="1" ' . checked( 1, $value, false ) . ' />';
 		echo ' ' . esc_html__( 'Enable logging', 'jc-logs' );
 		echo '</label>';
-	}
-
-	/**
-	 * Render the storage method field.
-	 */
-	public function render_storage_method_field() {
-		$value = get_option( 'jc_logs_storage_method', 'file' );
-		echo '<label>';
-		echo '<input type="radio" name="jc_logs_storage_method" value="file" ' . checked( 'file', $value, false ) . ' />';
-		echo ' ' . esc_html__( 'File System (default)', 'jc-logs' );
-		echo '</label><br />';
-		echo '<label>';
-		echo '<input type="radio" name="jc_logs_storage_method" value="database" ' . checked( 'database', $value, false ) . ' />';
-		echo ' ' . esc_html__( 'Database (not recommended on production sites)', 'jc-logs' );
-		echo '</label>';
-		echo '<p><em>' . esc_html__( 'Please note that if this setting is changed, existing log entries will remain stored in their current location and will not be moved.', 'jc-logs' ) . '</em></p>';
 	}
 
 	/**
