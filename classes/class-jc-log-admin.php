@@ -55,7 +55,6 @@ class JC_Log_Admin {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_post_jc_logs_download', array( $this, 'download_log_file' ) );
 		add_action( 'admin_post_jc_logs_delete', array( $this, 'delete_log_file' ) );
-		add_action( 'admin_post_jc_logs_delete_database', array( $this, 'delete_log_database' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 	}
 
@@ -191,9 +190,6 @@ class JC_Log_Admin {
 		if ( isset( $_GET['file'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			// Show the content of the selected log file.
 			$this->render_log_content();
-		} elseif ( isset( $_GET['log_name'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			// Show the content of the selected log from the database.
-			$this->render_log_content_database();
 		} else {
 			// Show the list of logs with pagination.
 			$this->render_log_list();
@@ -225,21 +221,6 @@ class JC_Log_Admin {
 
 		// Get logs from files in the centralized directory.
 		$log_files = glob( $this->log_directory . '*.log' );
-
-		// Get logs from the database.
-		$cache_key     = 'jc_logs_database_logs';
-		$database_logs = wp_cache_get( $cache_key, 'jc_logs' );
-
-		if ( false === $database_logs ) {
-			$database_logs = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-				$wpdb->prepare(
-					'SELECT log_name, MIN(timestamp) AS creation_time, MAX(timestamp) AS modification_time FROM %s GROUP BY log_name',
-					$this->table_name
-				)
-			);
-			// Cache for 5 minutes.
-			wp_cache_set( $cache_key, $database_logs, 'jc_logs', 300 );
-		}
 
 		// Prepare an array to hold all logs.
 		$all_logs = array();
@@ -275,26 +256,6 @@ class JC_Log_Admin {
 				if ( strtotime( $modification_time ) > strtotime( $all_logs[ $key ]['modification_time'] ) ) {
 					$all_logs[ $key ]['modification_time'] = $modification_time;
 				}
-			}
-		}
-
-		// Process logs from the database.
-		if ( ! empty( $database_logs ) ) {
-			foreach ( $database_logs as $log ) {
-				$log_name          = $log->log_name;
-				$creation_time     = $log->creation_time;
-				$modification_time = $log->modification_time;
-				// Since file size doesn't apply, set it to '-'.
-				$file_size = '-';
-
-				$all_logs[] = array(
-					'source'            => 'database',
-					'log_name'          => $log_name,
-					'file_names'        => array(),
-					'creation_time'     => $creation_time,
-					'modification_time' => $modification_time,
-					'file_size'         => $file_size,
-				);
 			}
 		}
 
@@ -732,38 +693,6 @@ class JC_Log_Admin {
 			} else {
 				// Si el archivo no existe, no se debería intentar eliminar.
 				wp_die( esc_html__( 'The file does not exist.', 'jc-logs' ) );
-			}
-		}
-	}
-
-	/**
-	 * Función para eliminar logs desde la base de datos.
-	 */
-	public function delete_log_database() {
-		// Verificar nonce y capacidades.
-		$jc_logs_nonce = isset( $_GET['jc_logs_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['jc_logs_nonce'] ) ) : '';
-		if ( empty( $jc_logs_nonce ) || ! wp_verify_nonce( $jc_logs_nonce, 'jc_logs_delete_database' ) || ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to perform this action.', 'jc-logs' ) );
-		}
-
-		if ( isset( $_GET['log_name'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$log_name = sanitize_text_field( wp_unslash( $_GET['log_name'] ) );
-
-			global $wpdb;
-			$table_name = $this->table_name;
-
-			// Eliminar entradas de la base de datos.
-			$deleted = $wpdb->delete( $table_name, array( 'log_name' => $log_name ), array( '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-
-			if ( false !== $deleted ) {
-				// Borrar la caché correspondiente.
-				$cache_key = 'jc_logs_log_entries_' . md5( $log_name );
-				wp_cache_delete( $cache_key, 'jc_logs' );
-
-				wp_safe_redirect( admin_url( 'tools.php?page=jc-logs&tab=explore' ) );
-				exit;
-			} else {
-				wp_die( esc_html__( 'Failed to delete the log from the database.', 'jc-logs' ) );
 			}
 		}
 	}

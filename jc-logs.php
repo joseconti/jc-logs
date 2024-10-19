@@ -33,4 +33,3 @@ function initialize_jc_logs() {
 
 // Activación y desactivación del plugin.
 register_activation_hook( __FILE__, array( 'JC_Logs\\JC_Log', 'activate' ) );
-register_deactivation_hook( __FILE__, array( 'JC_Logs\\JC_Log', 'deactivate' ) );

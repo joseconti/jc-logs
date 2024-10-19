@@ -258,12 +258,7 @@ class JC_Log implements LoggerInterface {
 		// Append the JSON-encoded context to the message.
 		$message .= ' ' . $context_json;
 
-		// Write the log based on the selected storage method.
-		if ( 'file' === $storage_method ) {
-			$this->write_log_to_file( $level, $message );
-		} elseif ( 'database' === $storage_method ) {
-			$this->write_log_to_database( $level, $message );
-		}
+		$this->write_log_to_file( $level, $message );
 	}
 
 	/**
@@ -339,68 +334,6 @@ class JC_Log implements LoggerInterface {
 	}
 
 	/**
-	 * Write the log to the database.
-	 *
-	 * @param string $level   The log level (e.g., emergency, alert, critical, error, warning, notice, info, debug).
-	 * @param string $message The log message.
-	 */
-	private function write_log_to_database( $level, $message ) {
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'jc_logs';
-
-		// Ensure the table exists.
-		$cache_key    = 'jc_logs_table_exists';
-		$table_exists = wp_cache_get( $cache_key, 'jc_logs' );
-
-		if ( false === $table_exists ) {
-			$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) === $table_name; // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			wp_cache_set( $cache_key, $table_exists, 'jc_logs', 3600 ); // Cache for 1 hour.
-		}
-
-		if ( ! $table_exists ) {
-			$this->create_logs_table();
-		}
-
-		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-			$table_name,
-			array(
-				'log_name'  => $this->log_name,
-				'level'     => $level,
-				'message'   => $message,
-				'timestamp' => current_time( 'mysql' ),
-			),
-			array(
-				'%s',
-				'%s',
-				'%s',
-				'%s',
-			)
-		);
-	}
-
-	/**
-	 * Create the logs table in the database.
-	 */
-	public function create_logs_table() {
-		global $wpdb;
-		$table_name      = $wpdb->prefix . 'jc_logs';
-		$charset_collate = $wpdb->get_charset_collate();
-
-		$sql = "CREATE TABLE $table_name (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            log_name varchar(255) NOT NULL,
-            level varchar(20) NOT NULL,
-            message text NOT NULL,
-            timestamp datetime NOT NULL,
-            PRIMARY KEY  (id),
-            KEY log_name (log_name)
-        ) $charset_collate;";
-
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta( $sql );
-	}
-
-	/**
 	 * Extract the base log name without the date and random string.
 	 *
 	 * @param string $file_name Full log file name.
@@ -440,32 +373,6 @@ class JC_Log implements LoggerInterface {
 			// Activar el plugin para un solo sitio.
 			$instance = self::get_instance();
 			$instance->initialize();
-		}
-	}
-
-	/**
-	 * Deactivation hook to remove logs for all sites in the network.
-	 *
-	 * @param bool $network_wide Whether to deactivate the plugin for all sites in the network.
-	 */
-	public static function deactivate( $network_wide ) {
-		if ( is_multisite() && $network_wide ) {
-			// Desactivar el plugin para toda la red.
-			$sites = get_sites();
-			foreach ( $sites as $site ) {
-				switch_to_blog( $site->blog_id );
-				global $wpdb;
-				$table_name = $wpdb->prefix . 'jc_logs';
-				$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %s', $table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange
-				wp_cache_delete( 'jc_logs_table', 'jc_logs' );
-				restore_current_blog();
-			}
-		} else {
-			// Desactivar el plugin para un solo sitio.
-			global $wpdb;
-			$table_name = $wpdb->prefix . 'jc_logs';
-			$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %s', $table_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange
-			wp_cache_delete( 'jc_logs_table', 'jc_logs' );
 		}
 	}
 }
