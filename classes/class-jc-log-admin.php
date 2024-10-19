@@ -604,8 +604,6 @@ class JC_Log_Admin {
 		$log_directory  = $this->log_directory;
 		$directory_size = $this->get_directory_size( $log_directory );
 
-		// echo '<h2>' . esc_html__( 'Log Settings', 'jc-logs' ) . '</h2>';
-
 		echo '<form method="post" action="options.php">';
 		// Output security fields for the registered setting "jc_logs_settings".
 		settings_fields( 'jc_logs_settings' );
