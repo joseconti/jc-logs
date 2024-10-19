@@ -20,6 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+if ( class_exists( 'JC_Logs\\JC_Log' ) ) {
+	return;
+}
+
 require_once 'includes/Psr/Log/logger-interface.php';
 require_once 'includes/Psr/Log/class-loglevel.php';
 require_once 'classes/class-jc-log.php';
