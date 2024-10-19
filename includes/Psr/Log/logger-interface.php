@@ -14,6 +14,10 @@
 
 namespace Psr\Log;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
+}
+
 interface LoggerInterface {
 	/**
 	 * System is unusable.
