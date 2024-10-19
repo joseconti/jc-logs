@@ -79,7 +79,6 @@ class JC_Log_Admin {
 
 		// Always use the centralized directory.
 		$this->log_directory = WP_CONTENT_DIR . '/uploads/jc-logs/';
-		$this->table_name    = $wpdb->prefix . 'jc_logs';
 
 		// Create the logs directory if it doesn't exist.
 		if ( ! file_exists( $this->log_directory ) ) {
@@ -481,8 +480,6 @@ class JC_Log_Admin {
 	 * Render the content of a selected log from the database.
 	 */
 	private function render_log_content_database() {
-		global $wpdb;
-		$table_name = $this->table_name;
 
 		$log_name = isset( $_GET['log_name'] ) ? sanitize_text_field( wp_unslash( $_GET['log_name'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
@@ -496,14 +493,6 @@ class JC_Log_Admin {
 		// Implement caching for the log entries.
 		$cache_key = 'jc_logs_log_entries_' . md5( $log_name );
 		$logs      = wp_cache_get( $cache_key, 'jc_logs' );
-
-		if ( false === $logs ) {
-			// Fetch log entries from the database using prepared statements.
-			$logs = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . $wpdb->prefix . 'jc_logs WHERE log_name = %s ORDER BY timestamp DESC', $log_name ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-
-			// Cache the result for 5 minutes.
-			wp_cache_set( $cache_key, $logs, 'jc_logs', 300 );
-		}
 
 		if ( ! empty( $logs ) ) {
 			// translators: %s is the name of the log being viewed.

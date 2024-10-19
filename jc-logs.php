@@ -15,10 +15,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-require_once WP_PLUGIN_DIR . '/jc-logs/includes/Psr/Log/logger-interface.php';
-require_once WP_PLUGIN_DIR . '/jc-logs/includes/Psr/Log/class-loglevel.php';
-require_once WP_PLUGIN_DIR . '/jc-logs/classes/class-jc-log.php';
-require_once WP_PLUGIN_DIR . '/jc-logs/classes/class-jc-log-admin.php';
+define( 'JC_LOGS_VERSION', '1.0.0' );
+define( 'JC_LOGS_PATH', plugin_dir_path( __FILE__ ) );
+define( 'JC_LOGS_URL', plugin_dir_url( __FILE__ ) );
+
+
+require_once JC_LOGS_PATH . '/includes/Psr/Log/logger-interface.php';
+require_once JC_LOGS_PATH . '/includes/Psr/Log/class-loglevel.php';
+require_once JC_LOGS_PATH . '/classes/class-jc-log.php';
+require_once JC_LOGS_PATH . '/classes/class-jc-log-admin.php';
 
 // Initialize the plugin after WordPress has fully loaded.
 add_action( 'plugins_loaded', 'initialize_jc_logs', 20 );
